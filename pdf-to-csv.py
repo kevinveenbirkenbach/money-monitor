@@ -12,22 +12,40 @@ def generate_hash(transaction):
     hash_input = f"{transaction[0]}_{transaction[1]}_{transaction[2]}_{transaction[3]}"
     return hashlib.sha256(hash_input.encode()).hexdigest()
 
+def detect_bank_type(text):
+    """Detects whether the document is from ING or Barclays."""
+    if text is None:
+        return "Unknown"
+    if "ING-DiBa" in text or "IBAN" in text:
+        return "ING"
+    elif "Barclaycard" in text or "BARCDEHAXXX" in text:
+        return "Barclays"
+    return "Unknown"
+
 def extract_transactions(pdf_path):
     """Extract transactions from a given PDF bank statement."""
     transactions = []
     account = ""
     
     with pdfplumber.open(pdf_path) as pdf:
+        if not pdf.pages:
+            print(f"Warning: No pages found in {pdf_path}")
+            return transactions
+        
+        first_page_text = pdf.pages[0].extract_text()
+        bank_type = detect_bank_type(first_page_text)
+        
         for page in pdf.pages:
             text = page.extract_text()
-            if text:
-                lines = text.split("\n")
-                
-                # Extract IBAN explicitly
+            if not text:
+                continue
+            
+            lines = text.split("\n")
+            
+            if bank_type == "ING":
                 iban_match = re.search(r"IBAN\s+(DE\d{2}\s\d{4}\s\d{4}\s\d{4}\s\d{2})", text)
-                
                 if iban_match:
-                    account = iban_match.group(1).replace(" ", "")  # Normalize IBAN by removing spaces
+                    account = iban_match.group(1).replace(" ", "")
                 
                 for i in range(len(lines)):
                     match = re.match(r"(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?)", lines[i])
@@ -35,20 +53,33 @@ def extract_transactions(pdf_path):
                         date = match.group(1)
                         description = match.group(2).strip()
                         amount = match.group(3).replace(".", "").replace(",", ".")
-                        
-                        # Convert date to ISO format (YYYY-MM-DD)
                         iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                        
+                        transactions.append([iso_date, description, float(amount), account])
+            
+            elif bank_type == "Barclays":
+                iban_match = re.search(r"IBAN\s+(DE\d{2}\s\d{4}\s\d{4}\s\d{4}\s\d{2})", text)
+                if iban_match:
+                    account = iban_match.group(1).replace(" ", "")
+                
+                for i in range(len(lines)):
+                    match = re.match(r"(\d{2}\.\d{2}\.\d{4})\s+(.*?)\s+Visa\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?)", lines[i])
+                    if match:
+                        date = match.group(1)
+                        description = match.group(2).strip()
+                        amount = match.group(3).replace(".", "").replace(",", ".")
+                        iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
                         transactions.append([iso_date, description, float(amount), account])
     
     return transactions
 
 def save_to_csv(transactions, output_file):
     """Save extracted transactions into a CSV file."""
-    # Sort transactions by date (ascending)
+    if not transactions:
+        print("No transactions found to save.")
+        return
+    
     transactions.sort(key=lambda x: x[0])
     
-    # Generate hashes using parallel processing
     with concurrent.futures.ThreadPoolExecutor() as executor:
         hashes = list(executor.map(generate_hash, transactions))
     
