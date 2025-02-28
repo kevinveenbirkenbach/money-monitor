@@ -26,9 +26,9 @@ def format_amount(val):
 
 def convert_to_iso(datum_str, global_year):
     """
-    Konvertiert einen Datumseintrag in den ISO-Standard (YYYY-MM-DD).
-    Falls datum_str nur im Format "DD.MM." vorliegt, wird das global_year ergänzt.
-    Falls ein Jahr vorhanden ist, wird bei zweistelliger Jahreszahl '20' vorangestellt.
+    Konvertiert einen Datumseintrag in ISO-Format (YYYY-MM-DD).
+    Falls datum_str nur "DD.MM." ist, wird das global_year ergänzt;
+    Falls bereits ein Jahr vorhanden ist, wird bei zweistelliger Jahreszahl '20' vorangestellt.
     """
     datum_str = datum_str.strip()
     m = re.fullmatch(r'(\d{2})\.(\d{2})\.(\d{2,4})', datum_str)
@@ -54,7 +54,7 @@ with open(txt_path, 'w', encoding='utf-8') as f:
     f.write(text)
 print(f"Text wurde in '{txt_path}' gespeichert.")
 
-# Globales Jahr extrahieren aus einem Datum im Text, z.B. "29.04.22"
+# Globales Jahr aus einem Datum im Text extrahieren (z. B. "29.04.22")
 global_year = None
 year_match = re.search(r'\b\d{2}\.\d{2}\.(\d{2,4})\b', text)
 if year_match:
@@ -73,7 +73,8 @@ block_pattern = re.compile(
     re.DOTALL | re.MULTILINE
 )
 
-# Für LASTSCHRIFT und EURO‑UEBERW.: Detaildaten in drei Zeilen
+# Für LASTSCHRIFT und EURO‑UEBERW. verwenden wir ein Pattern, das drei Zeilen erwartet:
+# Zeile 1: Buchungsdatum und (optional) PNNr, Zeile 2: Wertdatum, Zeile 3: Betrag.
 detail_pattern = re.compile(
     r'(?P<datum>\d{2}\.\d{2}\.)\s+(?P<pnnr>\d{3,4})\s*\n\s*'
     r'(?P<wert>\d{2}\.\d{2}\.)\s*\n\s*'
@@ -96,19 +97,17 @@ for m_block in block_pattern.finditer(text):
         if not detail_match:
             continue
         datum_raw = detail_match.group('datum').strip()
-        pnnr = detail_match.group('pnnr').strip() if detail_match.group('pnnr') else ""
+        # Wir ignorieren PNNr, also nicht speichern.
         wert_raw = detail_match.group('wert').strip()
         amount_extracted = detail_match.group('amount').strip()
     else:  # GUTSCHRIFT
+        # Versuche, Datum und Wert aus den ersten Zeilen zu ermitteln.
         lines = [line.strip() for line in block.splitlines() if line.strip()]
-        datum_raw, pnnr, wert_raw = "", "", ""
+        datum_raw, wert_raw = "", ""
         for idx, line in enumerate(lines):
             m_date = re.match(r'^(\d{2}\.\d{2}\.?\d{0,4})', line)
             if m_date:
                 datum_raw = m_date.group(1)
-                parts = line.split()
-                if len(parts) >= 2 and re.fullmatch(r'\d{3,4}', parts[1]):
-                    pnnr = parts[1]
                 if idx + 1 < len(lines):
                     m_date2 = re.match(r'^(\d{2}\.\d{2}\.?\d{0,4})', lines[idx+1])
                     if m_date2:
@@ -116,17 +115,17 @@ for m_block in block_pattern.finditer(text):
                 break
         amount_extracted = ""
     
-    # Datum in ISO-Format konvertieren
+    # Datum ins ISO-Format konvertieren (wir verwenden nur das Buchungsdatum)
     datum_iso = convert_to_iso(datum_raw, global_year) if datum_raw else ""
-    wert_iso = convert_to_iso(wert_raw, global_year) if wert_raw else ""
+    # Wir ignorieren das separate Wertdatum.
     
-    # Kontostand im Block ermitteln
+    # Versuche, den aktuellen Kontostand aus dem Block zu ermitteln.
     current_balance = None
     balance_match = balance_pattern.search(block)
     if balance_match:
         current_balance = parse_amount(balance_match.group('balance'))
     
-    # Für GUTSCHRIFT: Falls kein Betrag vorliegt, berechne ihn als Differenz
+    # Für GUTSCHRIFT: Falls kein Betrag extrahiert wurde, berechne ihn als Differenz.
     if trans_type == "GUTSCHRIFT" and (amount_extracted == "" or parse_amount(amount_extracted) is None):
         if previous_balance is not None and current_balance is not None:
             diff = current_balance - previous_balance
@@ -134,16 +133,10 @@ for m_block in block_pattern.finditer(text):
         else:
             amount_extracted = ""
     
-    if amount_extracted.endswith('+'):
-        haben = amount_extracted
-        soll = ""
-    elif amount_extracted.endswith('-'):
-        soll = amount_extracted
-        haben = ""
-    else:
-        soll = ""
-        haben = ""
+    # Hier definieren wir "Betrag" als das zusammengeführte Ergebnis (das Feld amount_extracted).
+    betrag = amount_extracted
     
+    # Beschreibung: Alles vor dem Beginn der Detaildaten (falls vorhanden), ansonsten der gesamte Block.
     if trans_type in {"LASTSCHRIFT", "EURO-UEBERW."} and detail_pattern.search(block):
         description = block[:detail_pattern.search(block).start()].strip().replace('\n', ' ')
     else:
@@ -152,18 +145,16 @@ for m_block in block_pattern.finditer(text):
     transactions.append({
         'Type': trans_type,
         'Datum': datum_iso,
-        'PNNr': pnnr,
-        'Wert': wert_iso,
-        'Soll': soll,
-        'Haben': haben,
+        'Betrag': betrag,
         'Beschreibung': description
     })
     
     if current_balance is not None:
         previous_balance = current_balance
 
+# Schreibe die Ergebnisse in eine CSV-Datei (ohne PNNr und Wert)
 with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-    fieldnames = ['Type', 'Datum', 'PNNr', 'Wert', 'Soll', 'Haben', 'Beschreibung']
+    fieldnames = ['Type', 'Datum', 'Betrag', 'Beschreibung']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     for trans in transactions:
