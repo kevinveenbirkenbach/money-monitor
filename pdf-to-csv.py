@@ -9,7 +9,7 @@ from datetime import datetime
 
 def generate_hash(transaction):
     """Generate a unique hash for a transaction."""
-    hash_input = f"{transaction[0]}_{transaction[1]}_{transaction[2]}_{transaction[3]}"
+    hash_input = f"{transaction[0]}_{transaction[1]}_{transaction[2]}_{transaction[3]}_{transaction[4]}"
     return hashlib.sha256(hash_input.encode()).hexdigest()
 
 def detect_bank_type(text):
@@ -54,7 +54,7 @@ def extract_transactions(pdf_path):
                         description = match.group(2).strip()
                         amount = match.group(3).replace(".", "").replace(",", ".")
                         iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                        transactions.append([iso_date, description, float(amount), account])
+                        transactions.append([iso_date, description, float(amount), account, pdf_path])
             
             elif bank_type == "Barclays":
                 iban_match = re.search(r"IBAN\s+(DE\d{2}\s\d{4}\s\d{4}\s\d{4}\s\d{2})", text)
@@ -68,7 +68,7 @@ def extract_transactions(pdf_path):
                         description = match.group(2).strip()
                         amount = match.group(3).replace(".", "").replace(",", ".")
                         iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                        transactions.append([iso_date, description, float(amount), account])
+                        transactions.append([iso_date, description, float(amount), account, pdf_path])
     
     return transactions
 
@@ -88,7 +88,7 @@ def save_to_csv(transactions, output_file):
     
     with open(output_file, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
-        writer.writerow(["Date", "Description", "Amount (EUR)", "Account", "Transaction Hash"])
+        writer.writerow(["Date", "Description", "Amount (EUR)", "Account", "File Path", "Transaction Hash"])
         writer.writerows(transactions)
 
 def process_input_path(input_path, output_csv):
