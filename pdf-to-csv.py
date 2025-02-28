@@ -7,7 +7,7 @@ import argparse
 def extract_transactions(pdf_path):
     """Extract transactions from a given PDF bank statement."""
     transactions = []
-    iban = ""
+    account = ""
     
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
@@ -15,10 +15,12 @@ def extract_transactions(pdf_path):
             if text:
                 lines = text.split("\n")
                 
-                # Extract IBAN if found
-                iban_match = re.search(r"IBAN\s+([A-Z]{2}\d{2}[A-Z0-9]+)", text)
+                # Extract IBAN and BIC explicitly
+                iban_match = re.search(r"IBAN\s+(DE\d{2}\s\d{4}\s\d{4}\s\d{4}\s\d{2})", text)
+                bic_match = re.search(r"BIC\s+([A-Z0-9]+)", text)
+                
                 if iban_match:
-                    iban = iban_match.group(1)
+                    account = iban_match.group(1).replace(" ", "")  # Normalize IBAN by removing spaces
                 
                 for i in range(len(lines)):
                     match = re.match(r"(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?)", lines[i])
@@ -26,7 +28,7 @@ def extract_transactions(pdf_path):
                         date = match.group(1)
                         description = match.group(2).strip()
                         amount = match.group(3).replace(".", "").replace(",", ".")
-                        transactions.append([date, description, float(amount), iban])
+                        transactions.append([date, description, float(amount), account])
     
     return transactions
 
@@ -34,7 +36,7 @@ def save_to_csv(transactions, output_file):
     """Save extracted transactions into a CSV file."""
     with open(output_file, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
-        writer.writerow(["Date", "Description", "Amount (EUR)", "IBAN"])
+        writer.writerow(["Date", "Description", "Amount (EUR)", "Account"])
         writer.writerows(transactions)
 
 def process_input_path(input_path, output_csv):
