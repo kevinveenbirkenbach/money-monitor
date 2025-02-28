@@ -7,95 +7,107 @@ pdf_path = '/home/kevinveenbirkenbach/Documents/institutions/Finanzinstitute/Con
 txt_path = 'kontoauszug.txt'
 csv_path = 'transactions.csv'
 
-# 1. PDF in Text umwandeln und als Textdatei speichern
 print("Extrahiere Text aus der PDF...")
 text = extract_text(pdf_path)
 with open(txt_path, 'w', encoding='utf-8') as f:
     f.write(text)
 print(f"Text wurde in '{txt_path}' gespeichert.")
 
-# 2. Zeilenweises Parsen des Textes mit einem einfachen Zustandsautomaten
-transactions = []
-lines = text.splitlines()
+# Wir splitten den gesamten Text an den Kontostand-Markern, die das Ende eines Transaktionsblocks anzeigen.
+blocks = re.split(r'\*\*\*\s*Kontostand.*', text)
 
-# Liste bekannter Transaktionstypen (diese können ggf. ergänzt werden)
+# Bekannte Transaktionstypen (diese Liste ggf. erweitern)
 transaction_types = {"LASTSCHRIFT", "EURO-UEBERW.", "GUTSCHRIFT"}
 
-i = 0
-while i < len(lines):
-    line = lines[i].strip()
-    # Überspringe leere Zeilen und Überschriften/Trennzeilen (z. B. "*** Kontostand", "Kontoauszug", etc.)
-    if not line or line.startswith('***') or line.startswith('Kontoauszug'):
-        i += 1
+transactions = []
+
+# Regex-Muster für die Detailzeile: z. B. "01.04. 8420"
+detail_pattern = re.compile(r'^(\d{2}\.\d{2}\.)\s+(\d{3,4})$')
+# Regex für das Wertdatum (z.B. "01.04.") – wir erlauben auch Leerzeichen
+wert_pattern = re.compile(r'^(\d{2}\.\d{2}\.)$')
+# Regex für den Betrag (z.B. "7.291,73+")
+amount_pattern = re.compile(r'^([\d.,]+)([+-])$')
+
+for block in blocks:
+    # Blockzeilen bereinigen
+    lines = [line.strip() for line in block.splitlines() if line.strip()]
+    if not lines:
         continue
 
-    # Prüfe, ob diese Zeile ein bekannter Transaktionstyp ist
-    if line in transaction_types:
-        trans_type = line
-        i += 1
+    # Suche nach einem bekannten Transaktionstyp in diesem Block
+    trans_type = None
+    type_index = None
+    for idx, line in enumerate(lines):
+        if line in transaction_types:
+            trans_type = line
+            type_index = idx
+            break
+    if trans_type is None:
+        continue
 
-        # Sammle Beschreibungszeilen (alle Zeilen bis zur ersten Zeile, die mit Datum beginnt)
-        description_lines = []
-        while i < len(lines):
-            current = lines[i].strip()
-            # Überspringe Labels, die nicht zur Beschreibung gehören
-            if current in {"Text/Verwendungszweck", "Datum PNNr Wert", "Soll", "Haben"}:
-                i += 1
-                continue
-            # Wenn die Zeile mit einem Datum beginnt (Format DD.MM.), beenden wir die Beschreibung
-            if re.match(r'^\d{2}\.\d{2}\.', current):
-                break
-            description_lines.append(current)
-            i += 1
+    # Ab Zeile nach dem Typ sammeln wir Beschreibungszeilen, bis wir auf eine Detailzeile stoßen
+    desc_lines = []
+    detail_index = None
+    datum = ""
+    pnnr = ""
+    for j in range(type_index + 1, len(lines)):
+        # Überspringe gängige Labels
+        if lines[j] in {"Text/Verwendungszweck", "Datum PNNr Wert", "Soll", "Haben"}:
+            continue
+        m_detail = detail_pattern.match(lines[j])
+        if m_detail:
+            datum = m_detail.group(1)
+            pnnr = m_detail.group(2)
+            detail_index = j
+            break
+        else:
+            desc_lines.append(lines[j])
+    if detail_index is None:
+        continue
 
-        # Nun erwarten wir die Detailzeile mit Datum und eventuell PNNr
-        datum = ""
-        pnnr = ""
-        if i < len(lines):
-            m = re.match(r'^(\d{2}\.\d{2}\.)(?:\s+(\d{3,4}))?$', lines[i].strip())
-            if m:
-                datum = m.group(1)
-                pnnr = m.group(2) if m.group(2) else ""
-            i += 1
+    # Nach der Detailzeile erwarten wir das Wertdatum. Falls vorhanden, darf es z. B. "01.04." sein.
+    wert = ""
+    if detail_index + 1 < len(lines):
+        if wert_pattern.match(lines[detail_index + 1]):
+            wert = lines[detail_index + 1]
+        else:
+            # Auch wenn es nicht exakt passt, nehmen wir die Zeile als Wertdatum
+            wert = lines[detail_index + 1]
 
-        # Nächste Zeile: Wertdatum
-        wert = ""
-        if i < len(lines):
-            wert = lines[i].strip()
-            i += 1
+    # Danach suchen wir in den folgenden Zeilen nach einem Betrag
+    amount = ""
+    amount_index = None
+    for k in range(detail_index + 2, len(lines)):
+        m_amount = amount_pattern.match(lines[k])
+        if m_amount:
+            amount = m_amount.group(1) + m_amount.group(2)
+            amount_index = k
+            break
+    if not amount:
+        continue
 
-        # Überspringe ggf. Labelzeilen "Soll" oder "Haben"
-        while i < len(lines) and lines[i].strip() in {"Soll", "Haben"}:
-            i += 1
-
-        # Nächste Zeile: Betrag
+    # Betrag zuordnen: Bei Plus in Haben, bei Minus in Soll
+    if amount.endswith('+'):
+        haben = amount
         soll = ""
-        haben = ""
-        if i < len(lines):
-            amount_line = lines[i].strip()
-            m_amount = re.match(r'^([\d.,]+)([+-])$', amount_line)
-            if m_amount:
-                amount = m_amount.group(1) + m_amount.group(2)
-                if amount.endswith('+'):
-                    haben = amount
-                else:
-                    soll = amount
-            i += 1
-
-        # Erstelle das Transaktions-Dictionary
-        transactions.append({
-            'Type': trans_type,
-            'Datum': datum,
-            'PNNr': pnnr,
-            'Wert': wert,
-            'Soll': soll,
-            'Haben': haben,
-            'Beschreibung': " ".join(description_lines)
-        })
     else:
-        i += 1
+        soll = amount
+        haben = ""
 
-# 3. Speichere die Transaktionen in eine CSV-Datei
+    # Die Beschreibung setzen wir aus den gesammelten Zeilen zusammen.
+    description = " ".join(desc_lines)
+
+    transactions.append({
+        'Type': trans_type,
+        'Datum': datum,
+        'PNNr': pnnr,
+        'Wert': wert,
+        'Soll': soll,
+        'Haben': haben,
+        'Beschreibung': description
+    })
+
+# Schreibe die extrahierten Transaktionen in eine CSV-Datei
 with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
     fieldnames = ['Type', 'Datum', 'PNNr', 'Wert', 'Soll', 'Haben', 'Beschreibung']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
