@@ -13,57 +13,60 @@ with open(txt_path, 'w', encoding='utf-8') as f:
     f.write(text)
 print(f"Text wurde in '{txt_path}' gespeichert.")
 
-# Wir nutzen ein Pattern, um den Text an den Transaktionstypen zu splitten.
-# Die Annahme: Die Transaktionstypen stehen jeweils alleine in einer Zeile.
-type_pattern = re.compile(r'^(LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)$', re.MULTILINE)
-parts = type_pattern.split(text)
-# parts enthält dann: [Header, type1, Segment1, type2, Segment2, ...]
+# Zuerst teilen wir den Text in Blöcke auf – jeder Block beginnt mit einem Transaktionstyp.
+# Wir gehen davon aus, dass der Typ (LASTSCHRIFT, EURO-UEBERW. oder GUTSCHRIFT) in einer eigenen Zeile steht.
+block_pattern = re.compile(
+    r'^(?P<type>LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n'
+    r'(?P<block>.*?)(?=^(?:LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n|\Z)',
+    re.DOTALL | re.MULTILINE
+)
+
+# Detailfelder: Erwartet werden in der Regel drei Zeilen:
+# 1. Buchungsdatum und PNNr (z. B. "01.04. 8420")
+# 2. Wertdatum (z. B. "01.04.")
+# 3. Betrag (z. B. "7.291,73+") – dieser Teil ist jetzt optional.
+detail_pattern = re.compile(
+    r'(?P<datum>\d{2}\.\d{2}\.)\s+(?P<pnnr>\d{3,4})\s*\n'
+    r'\s*(?P<wert>\d{2}\.\d{2}\.)\s*\n'
+    r'\s*(?P<amount>[\d.,]+[+-])?',
+    re.MULTILINE
+)
+# Fallback‑Pattern, falls die Felder ohne Zeilenumbruch zusammengeführt sind:
+detail_pattern_merged = re.compile(
+    r'(?P<datum>\d{2}\.\d{2}\.)(?P<pnnr>\d{3,4})?(?P<wert>\d{2}\.\d{2}\.)(?P<amount>[\d.,]+[+-])?'
+)
 
 transactions = []
 
-# Standard‑Pattern: erwartet
-#   Zeile: Datum (DD.MM.) optional gefolgt von PNNr (3-4 Ziffern)
-#   Zeile: Wertdatum (DD.MM.)
-#   Zeile: Betrag (Format z. B. 7.291,73+)
-detail_pattern = re.compile(
-    r'(\d{2}\.\d{2}\.)\s*(\d{3,4})?\s*\n\s*(\d{2}\.\d{2}\.)\s*\n\s*([\d.,]+[+-])',
-    re.MULTILINE
-)
-# Fallback‑Pattern für zusammengeführte Detailzeile (wenn kein Zeilenumbruch zwischen PNNr und Wertdatum vorliegt):
-# z. B. "24269/2022/12452513.04.909,43-"
-detail_pattern_merged = re.compile(
-    r'(\d{2}\.\d{2}\.)\s*(\d{3,4})?(\d{2}\.\d{2}\.)\s*([\d.,]+[+-])'
-)
-
-# Iteriere über alle gefundenen Transaktionen.
-# parts[0] enthält Headertext, dann folgen Paare: [type, segment]
-for i in range(1, len(parts), 2):
-    trans_type = parts[i].strip()
-    segment = parts[i+1]
-    
-    # Zunächst: Beschreibung = Text bis zum ersten Auftreten der Detaildaten
-    # Wir suchen mit dem Standard‑Pattern:
-    m = detail_pattern.search(segment)
-    if not m:
-        m = detail_pattern_merged.search(segment)
-    if not m:
-        # Falls in diesem Segment keine Detaildaten gefunden wurden, überspringen
+for m_block in block_pattern.finditer(text):
+    trans_type = m_block.group('type').strip()
+    block = m_block.group('block')
+    # Suche in diesem Block nach den Detailfeldern.
+    detail_match = detail_pattern.search(block)
+    if not detail_match:
+        detail_match = detail_pattern_merged.search(block)
+    if not detail_match:
         continue
 
-    datum = m.group(1).strip()
-    pnnr = m.group(2).strip() if m.group(2) else ""
-    wert = m.group(3).strip()
-    amount = m.group(4).strip()
+    datum = detail_match.group('datum').strip()
+    pnnr = detail_match.group('pnnr').strip() if detail_match.group('pnnr') else ""
+    wert = detail_match.group('wert').strip()
+    amount = detail_match.group('amount')
+    amount = amount.strip() if amount else ""
     
     if amount.endswith('+'):
         haben = amount
         soll = ""
-    else:
+    elif amount.endswith('-'):
         soll = amount
         haben = ""
+    else:
+        soll = ""
+        haben = ""
     
-    # Die Beschreibung nehmen wir als den Text vor m.start() – dabei Zeilenumbrüche durch Leerzeichen ersetzen
-    desc = segment[:m.start()].strip().replace('\n', ' ')
+    # Die Beschreibung ist alles, was vor dem Beginn der Detailfelder im Block steht.
+    description = block[:detail_match.start()].strip().replace('\n', ' ')
+    
     transactions.append({
         'Type': trans_type,
         'Datum': datum,
@@ -71,7 +74,7 @@ for i in range(1, len(parts), 2):
         'Wert': wert,
         'Soll': soll,
         'Haben': haben,
-        'Beschreibung': desc
+        'Beschreibung': description
     })
 
 with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
