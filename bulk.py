@@ -24,7 +24,7 @@ def main():
         input_path = os.path.join(base_dir, bank, "Bank Statements")
         output_file = os.path.join(base_dir, bank, "Transactions/transactions")  # base output name without extension
         print(f"Processing {bank} from {input_path} ...")
-        cmd = ["python", "main.py", "-r", input_path, output_file, "--csv", "--html"]
+        cmd = ["python", "main.py", "-r", input_path, output_file, "--export-types", "csv", "html"]
         if args.from_date:
             cmd.extend(["--from", args.from_date])
         if args.to_date:
@@ -37,7 +37,7 @@ def main():
     for bank in banks:
         combined_input_paths.append(os.path.join(base_dir, bank, "Bank Statements"))
     combined_output = os.path.join(base_dir, "transactions")
-    cmd = ["python", "main.py", "-r"] + combined_input_paths + [combined_output, "--csv", "--html"]
+    cmd = ["python", "main.py", "-r"] + combined_input_paths + [combined_output, "--export-types", "csv", "html"]
     if args.from_date:
         cmd.extend(["--from", args.from_date])
     if args.to_date:
