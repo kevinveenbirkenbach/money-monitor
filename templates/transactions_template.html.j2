@@ -7,6 +7,21 @@
         integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
+  <style>
+    /* Überschriften sollen nicht umbrechen */
+    th {
+      white-space: nowrap;
+    }
+    /* Bestimmte Spalten (z.B. Date und Value) nicht umbrechen */
+    td.nowrap {
+      white-space: nowrap;
+    }
+    /* Optional: Falls Du allen Zellen das Nicht-Umbrechen geben möchtest
+    td, th {
+      white-space: nowrap;
+    }
+    */
+  </style>
 </head>
 <body>
   <div class="container my-4">
@@ -21,18 +36,18 @@
     </div>
     <table id="transactionsTable" class="table table-striped table-hover">
     <thead class="table-dark">
-        <tr>
-            <th><i class="bi bi-hash me-1"></i> ID</th>
-            <th><i class="bi bi-bank me-1"></i> Bank</th>
-            <th><i class="bi bi-calendar me-1"></i> Date</th>
-            <th><i class="bi bi-person me-1"></i> Sender</th>
-            <th>Reciver</th>
-            <th><i class="bi bi-currency-euro me-1"></i> Value</th>
-            <th>Currency</th>
-            <th><i class="bi bi-card-text me-1"></i> Description</th>
-            <th>Invoice</th>
-            <th><i class="bi bi-file-earmark-text me-1"></i> File</th>
-        </tr>
+    <tr>
+        <th><i class="bi bi-hash me-1"></i> ID</th>
+        <th><i class="bi bi-bank me-1"></i> Bank</th>
+        <th><i class="bi bi-calendar me-1"></i> Date</th>
+        <th><i class="bi bi-person me-1"></i> Sender</th>
+        <th><i class="bi bi-arrow-right-circle me-1"></i> Receiver</th>
+        <th><i class="bi bi-currency-euro me-1"></i> Value</th>
+        <th><i class="bi bi-cash-stack me-1"></i> Currency</th>
+        <th><i class="bi bi-card-text me-1"></i> Description</th>
+        <th><i class="bi bi-receipt me-1"></i> Invoice</th>
+        <th><i class="bi bi-file-earmark-text me-1"></i> File</th>
+    </tr>
     </thead>
       <tfoot>
         <tr>
@@ -53,10 +68,10 @@
           <tr class="{% if t.amount is none %}table-warning{% endif %}">
             <td>{{ t.id }}</td>
             <td>{{ t.bank }}</td>
-            <td>{{ t.date }}</td>
+            <td class="nowrap">{{ t.date }}</td>
             <td>{{ t.sender }}</td>
             <td>{{ t.to }}</td>
-            <td>
+            <td class="nowrap">
               {% if t.amount is not none %}
                 {% if t.amount < 0 %}
                   <i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>
@@ -72,10 +87,10 @@
             <td>{{ t.currency }}</td>
             <td>{{ t.description }}</td>
             <td>{{ t.invoice }}</td>
-            <td>
+            <td class="nowrap">
               <a href="{{ t.file_path }}">
                 <i class="bi bi-file-earmark-text me-1"></i>
-                {{ t.file_name }}
+                {{ t.file_name | truncate(16, True, '...') }}
               </a>
             </td>
           </tr>
@@ -83,6 +98,13 @@
       </tbody>
     </table>
   </div>
+  <footer class="text-center mt-4">
+    <small>
+        This project is licensed under the <a href="https://opensource.org/licenses/MIT" target="_blank">MIT License</a> &mdash; 
+        developed by <a href="https://www.veen.world/" target="_blank">Kevin Veen-Birkenbach</a>. 
+        View source on <a href="https://github.com/kevinveenbirkenbach/financial-helper" target="_blank">GitHub</a>.
+      </small>
+</footer>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>

@@ -82,15 +82,13 @@ class PDFTransactionExtractor:
                             description = match.group(2).strip()
                             num_str = match.group(3)
                             sign = match.group(4)  # Kann "-", "+", oder None sein.
-                            # Falls das Vorzeichen nicht erfasst wurde, aber der Betrag selbst damit endet:
+                            
                             if sign is None and num_str and num_str[-1] in "-+":
                                 sign = num_str[-1]
                                 num_str = num_str[:-1].strip()
-                            # Umwandlung: Ersetze Punkte, ersetze Komma durch Punkt, dann float
-                            try:
-                                value = float(num_str.replace(".", "").replace(",", "."))
-                            except Exception:
-                                value = 0.0
+                            
+                            value = float(num_str.replace(".", "").replace(",", "."))
+
                             if sign == "-":
                                 value = -value
                             iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
