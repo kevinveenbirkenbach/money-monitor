@@ -34,7 +34,7 @@ def main():
         to_date=args.to_date,
         create_dirs=args.create_dirs,
         quiet=args.quiet,
-        debug=args.debug,
+        logger=logger,
         print_cmd=args.print_cmd
     )
     processor.process()

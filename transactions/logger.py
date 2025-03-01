@@ -4,6 +4,8 @@ class Logger:
     YELLOW = "\033[93m"
     BLUE = "\033[94m"
     WHITE = "\033[97m"
+    GREEN = "\033[92m"
+    PINK = "\033[35m"
 
     def __init__(self, debug=False, quiet=False):
         self.debug_enabled = debug
@@ -27,4 +29,9 @@ class Logger:
     def debug(self, message):
         if self.quiet or not self.debug_enabled:
             return
-        print(f"{self.WHITE}[DEBUG]{self.RESET} {message}")
+        print(f"{self.PINK}[DEBUG]{self.RESET} {message}")
+
+    def success(self, message):
+        if self.quiet:
+            return
+        print(f"{self.GREEN}[SUCCESS]{self.RESET} {message}")

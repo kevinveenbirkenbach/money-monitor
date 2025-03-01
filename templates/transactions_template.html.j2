@@ -8,11 +8,9 @@
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
   <style>
-    /* Überschriften sollen nicht umbrechen */
     th {
       white-space: nowrap;
     }
-    /* Bestimmte Spalten (z.B. Date und Value) nicht umbrechen */
     td.nowrap {
       white-space: nowrap;
     }
@@ -29,70 +27,46 @@
         <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
       </button>
     </div>
+    {% set headers = transactions[0].getDictionary().keys() | list if transactions|length > 0 else [] %}
     <table id="transactionsTable" class="table table-striped table-hover">
     <thead class="table-dark">
-      <tr>
-        <th><i class="bi bi-hash me-1"></i> ID</th>
-        <th><i class="bi bi-bank me-1"></i> Bank</th>
-        <th><i class="bi bi-bank me-1"></i> Account</th>
-        <th><i class="bi bi-calendar me-1"></i> Date</th>
-        <th><i class="bi bi-person me-1"></i> Sender</th>
-        <th><i class="bi bi-person-lines-fill me-1"></i> Receiver</th>
-        <th><i class="bi bi-currency-euro me-1"></i> Value</th>
-        <th><i class="bi bi-cash-stack me-1"></i> Currency</th>
-        <th><i class="bi bi-card-text me-1"></i> Description</th>
-        <th><i class="bi bi-receipt me-1"></i> Invoice</th>
-        <th><i class="bi bi-file-earmark-text me-1"></i> File</th>
-      </tr>
+        <tr>
+            {% for header in headers %}
+            <th>{% if header in icon_map %}<i class="{{ icon_map[header]|safe }}"></i>{% endif %} {{ header.replace('_', ' ') | title }}</th>
+            {% endfor %}
+        </tr>
     </thead>
     <tfoot>
-      <tr>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search ID"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Bank"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Account"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Date"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Sender"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Receiver"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Value"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Currency"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Description"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search Invoice"></th>
-        <th><input type="text" class="form-control form-control-sm" placeholder="Search File"></th>
-      </tr>
+        <tr>
+            {% for header in headers %}
+            <th><input type="text" class="form-control form-control-sm" placeholder="Search {{ header | title }}"></th>
+            {% endfor %}
+        </tr>
     </tfoot>
     <tbody>
-      {% for t in transactions %}
-        <tr class="{% if t.amount is none %}table-warning{% endif %}">
-          <td>{{ t.id }}</td>
-          <td>{{ t.bank }}</td>
-          <td>{{ t.account }}</td> 
-          <td class="nowrap">{{ t.date }}</td>
-          <td>{{ t.sender }}</td>
-          <td>{{ t.receiver }}</td>
-          <td class="nowrap">
-            {% if t.amount is not none %}
-              {% if t.amount < 0 %}
-                <i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>
-                <span class="text-danger">{{ t.amount }}</span>
-              {% else %}
-                <i class="bi bi-arrow-up-circle-fill text-success me-1"></i>
-                <span class="text-success">{{ t.amount }}</span>
-              {% endif %}
+        {% for row in transactions %}
+        <tr class="{% if row.value is none %}table-warning{% endif %}">
+            {% for header in headers %}
+            {% if header == "value" %}
+                <td class="nowrap">
+                {% if row[header] is not none %}
+                    {% if row[header] < 0 %}
+                    <i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>
+                    <span class="text-danger">{{ row[header] }}</span>
+                    {% else %}
+                    <i class="bi bi-arrow-up-circle-fill text-success me-1"></i>
+                    <span class="text-success">{{ row[header] }}</span>
+                    {% endif %}
+                {% else %}
+                    <span class="text-danger">No Value defined!</span>
+                {% endif %}
+                </td>
             {% else %}
-              <span class="text-danger">No Value defined!</span>
+                <td>{{ row[header] }}</td>
             {% endif %}
-          </td>
-          <td>{{ t.currency }}</td>
-          <td>{{ t.description }}</td>
-          <td>{{ t.invoice }}</td>
-          <td class="nowrap">
-            <a href="{{ t.file_path }}">
-              <i class="bi bi-file-earmark-text me-1"></i>
-              {{ t.file_name | truncate(16, True, '...') }}
-            </a>
-          </td>
+            {% endfor %}
         </tr>
-      {% endfor %}
+        {% endfor %}
     </tbody>
     </table>
   </div>
@@ -108,7 +82,6 @@
   <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
   <script>
     $(document).ready(function() {
-        // Add a text input to each footer cell for filtering
         $('#transactionsTable tfoot th').each(function () {
             var title = $(this).text();
             $(this).html('<input type="text" placeholder="Search ' + title + '" class="form-control form-control-sm" />');

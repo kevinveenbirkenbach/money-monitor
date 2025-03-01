@@ -1,17 +1,10 @@
 import re
-from datetime import datetime
 from pdfminer.high_level import extract_text
 from .transaction import Transaction
 from .logger import Logger
+from .extractor_pdf import BasePDFExtractor
 
-class PDFConsorsbankExtractor:
-    def __init__(self, pdf_path, debug=False):
-        self.pdf_path = pdf_path
-        self.transactions = []
-        self.previous_balance = None
-        self.debug = debug
-        self.logger = Logger(debug=debug)
-
+class PDFConsorsbankExtractor(BasePDFExtractor):
     def parse_amount(self,s):
         s = s.strip()
         sign = 1
@@ -49,7 +42,7 @@ class PDFConsorsbankExtractor:
         return datum_str
 
     def extract_transactions(self):
-        text = extract_text(self.pdf_path)
+        text = extract_text(self.transaction_source_document)
         global_year = None
         year_match = re.search(r'\b\d{2}\.\d{2}\.(\d{2,4})\b', text)
         if year_match:
@@ -121,7 +114,7 @@ class PDFConsorsbankExtractor:
                     sender = ""
                     receiver = account
 
-                transaction = Transaction(datum_iso, full_description, amount_val, sender, receiver, account, self.pdf_path, "Consorsbank", "", "")
+                transaction = Transaction(datum_iso, full_description, amount_val, sender, receiver, account, self.transaction_source_document, "Consorsbank", "", "")
                 self.transactions.append(transaction)
                 self.logger.info(f"Transaction {transaction} appended.")
                 if current_balance is not None:

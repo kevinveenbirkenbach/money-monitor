@@ -9,29 +9,18 @@ from .logger import Logger
 from jinja2 import Environment, FileSystemLoader
 
 class BaseExporter:
-    def __init__(self, transactions, output_file, debug=False, quiet=False):
-        self.transactions = sorted(transactions, key=lambda t: t.date)
+    def __init__(self, transactions, output_file, logger=Logger(), quiet=False):
+        self.transactions = sorted(transactions, key=lambda t: t.transaction_date)
         self.output_file = output_file
-        self.logger = Logger(debug=debug, quiet=quiet)
+        self.logger = logger
 
     def get_data_as_dicts(self):
         return [
-            {
-                "id": t.id,
-                "bank": t.bank,
-                "date": t.date,
-                "sender": t.sender,
-                "to": t.to,
-                "amount": t.amount,
-                "currency": t.currency,
-                "description": t.description,
-                "invoice": t.invoice,
-                "file_path": t.file_path
-            }
-            for t in self.transactions
+            t.getDictionary() for t in self.transactions
         ]
 
 class CSVExporter(BaseExporter):
+    """Exports transactions to a CSV file."""
     def export(self):
         if not self.transactions:
             self.logger.warning("No transactions found to save.")
@@ -39,16 +28,21 @@ class CSVExporter(BaseExporter):
         try:
             with open(self.output_file, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(["Date", "Description", "Amount (EUR)", "From", "File Path", "Bank", "ID"])
+                # Get the header keys from the first transaction's dictionary
+                header = list(self.transactions[0].getDictionary().keys())
+                writer.writerow(header)
+                # Write each transaction's values in the same order as the header
                 for t in self.transactions:
-                    writer.writerow([t.date, t.description, t.amount, t.sender, t.file_path, t.bank, t.id])
-            self.logger.info(f"CSV file created: {self.output_file}")
+                    data = t.getDictionary()
+                    row = [data.get(key, "") for key in header]
+                    writer.writerow(row)
+            self.logger.success(f"CSV file created: {self.output_file}")
         except Exception as e:
             self.logger.error(f"Error exporting CSV: {e}")
 
 class HTMLExporter(BaseExporter):
-    def __init__(self, transactions, output_file, from_date=None, to_date=None, debug=False, quiet=False):
-        super().__init__(transactions, output_file, debug=debug, quiet=quiet)
+    def __init__(self, transactions, output_file, from_date=None, to_date=None, logger=Logger(), quiet=False):
+        super().__init__(transactions, output_file, logger, quiet=quiet)
         self.from_date = from_date
         self.to_date = to_date
 
@@ -64,17 +58,28 @@ class HTMLExporter(BaseExporter):
             filter_info = f"Filtered: on or after {self.from_date}"
         elif self.to_date:
             filter_info = f"Filtered: on or before {self.to_date}"
-
-        for t in self.transactions:
-            t.file_name = os.path.basename(t.file_path)
+        
+        icon_map = {
+            "id": "bi bi-hash me-1",
+            "bank": "bi bi-bank me-1",
+            "account": "bi bi-bank me-1",
+            "date": "bi bi-calendar me-1",
+            "sender": "bi bi-person me-1",
+            "receiver": "bi bi-person-lines-fill me-1",
+            "value": "bi bi-currency-euro me-1",
+            "currency": "bi bi-cash-stack me-1",
+            "description": "bi bi-card-text me-1",
+            "invoice": "bi bi-receipt me-1",
+            "transaction_source_document": "bi bi-file-earmark-text me-1"
+        }
 
         env = Environment(loader=FileSystemLoader(searchpath="./templates"))
         template = env.get_template("transactions_template.html.j2")
-        rendered_html = template.render(filter_info=filter_info, transactions=self.transactions)
+        rendered_html = template.render(filter_info=filter_info, transactions=self.transactions,icon_map=icon_map)
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
                 f.write(rendered_html)
-            self.logger.info(f"HTML file created: {self.output_file}")
+            self.logger.success(f"HTML file created: {self.output_file}")
         except Exception as e:
             self.logger.error(f"Error exporting HTML: {e}")
 
@@ -88,7 +93,7 @@ class JSONExporter(BaseExporter):
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-            self.logger.info(f"JSON file created: {self.output_file}")
+            self.logger.success(f"JSON file created: {self.output_file}")
         except Exception as e:
             self.logger.error(f"Error exporting JSON: {e}")
 
@@ -105,6 +110,6 @@ class YamlExporter(BaseExporter):
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
                 yaml.dump(data, f, allow_unicode=True)
-            self.logger.info(f"YAML file created: {self.output_file}")
+            self.logger.success(f"YAML file created: {self.output_file}")
         except Exception as e:
             self.logger.error(f"Error exporting YAML: {e}")

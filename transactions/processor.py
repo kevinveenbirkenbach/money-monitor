@@ -1,15 +1,12 @@
 import os
 import concurrent.futures
 from pdfminer.high_level import extract_text
-from .extractor import PDFTransactionExtractor
-from .extractor_consorsbank import PDFConsorsbankExtractor
-from .extractor_dkb_csv import DKBCSVExtractor
 from .logger import Logger
 
 class TransactionProcessor:
     """Coordinates reading files (PDF, CSV) from multiple paths and exporting transactions."""
     def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_types=None,
-                 from_date=None, to_date=None, create_dirs=False, quiet=False, debug=False, print_cmd=False):
+                 from_date=None, to_date=None, create_dirs=False, quiet=False, logger=Logger(), print_cmd=False):
         self.input_paths = input_paths
         self.output_base = output_base
         self.all_transactions = []
@@ -20,20 +17,23 @@ class TransactionProcessor:
         self.to_date = to_date
         self.create_dirs = create_dirs
         self.quiet = quiet
-        self.debug = debug
         self.print_cmd = print_cmd
-        self.logger = Logger(debug=self.debug, quiet=self.quiet)
+        self.logger = logger
 
-    def log(self, message, level="info"):
-        if level == "debug":
-            self.logger.debug(message)
-        elif level == "warning":
-            self.logger.warning(message)
-        elif level == "error":
-            self.logger.error(message)
-        else:
-            self.logger.info(message)
-
+    def _filter_by_date(self):
+        if self.from_date or self.to_date:
+            filtered = []
+            for transaction in self.all_transactions:
+                if transaction.transaction_date:
+                    if self.from_date and transaction.transaction_date < self.from_date:
+                        continue
+                    if self.to_date and transaction.transaction_date > self.to_date:
+                        continue
+                else:
+                    self.logger.warning(f"Transaction {transaction} doesn't contain a date attribut.")
+                filtered.append(transaction)
+            self.all_transactions = filtered
+        
     def process(self):
         pdf_csv_files = []
         for path in self.input_paths:
@@ -52,31 +52,20 @@ class TransactionProcessor:
             elif os.path.isfile(path) and path.lower().endswith((".pdf", ".csv")):
                 pdf_csv_files.append(path)
             else:
-                self.log(f"Invalid input path: {path}", level="warning")
+                self.logger.warning(f"Invalid input path: {path}")
         if not pdf_csv_files:
-            self.log("No PDF/CSV files found in the given paths.", level="warning")
+            self.logger.warning("No PDF/CSV files found in the given paths.")
             return
-        self.log(f"Found {len(pdf_csv_files)} files.", level="debug")
+        self.logger.info(f"Found {len(pdf_csv_files)} files.")
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             results = list(executor.map(self.extract_from_file, pdf_csv_files))
             for transactions in results:
                 self.all_transactions.extend(transactions)
 
-        # Filter transactions based on date parameters
-        if self.from_date or self.to_date:
-            filtered = []
-            for t in self.all_transactions:
-                if t.date:
-                    if self.from_date and t.date < self.from_date:
-                        continue
-                    if self.to_date and t.date > self.to_date:
-                        continue
-                else:
-                    self.log(f"Transaction {t} doesn't contain a date attribut.", level="warning")
-                filtered.append(t)
-            self.all_transactions = filtered
+        self._filter_by_date();
 
+        self.logger.debug(self.all_transactions)
         # Export logic: iterate over all specified export types
         for fmt in self.export_types:
             ext = f".{fmt}"
@@ -105,40 +94,43 @@ class TransactionProcessor:
         if self.print_transactions:
             self.console_output()
 
-    @staticmethod
-    def extract_from_file(file_path):
+    def extract_from_file(self,file_path):
         ext = os.path.splitext(file_path)[1].lower()
         if ext == ".csv":
             with open(file_path, encoding="utf-8") as f:
                 lines = [f.readline() for _ in range(10)]
             content = " ".join(lines)
             if "Transaktionscode" in content or "PayPal" in content:
-                from .extractor_paypal_csv import PayPalCSVExtractor
+                from .extractor_csv_paypal import PayPalCSVExtractor
                 extractor = PayPalCSVExtractor(file_path)
-                return extractor.extract_transactions()
             elif "Buchungsdatum" in content:
-                from .extractor_dkb_csv import DKBCSVExtractor
-                extractor = DKBCSVExtractor(file_path, debug=True)
-                return extractor.extract_transactions()
+                from .extractor_csv_dkb import DKBCSVExtractor
+                extractor = DKBCSVExtractor(file_path, self.logger)
             else:
                 return []
         elif ext == ".pdf":
             try:
                 text = extract_text(file_path, maxpages=1)
+                lower_text = text.lower()
             except Exception:
                 text = ""
+                self.logger.info(f"No text could be extracted from {file_path}.")
             if "PayPal" in text and ("Händlerkonto-ID" in text or "Transaktionsübersicht" in text):
-                from .extractor_paypal_pdf import PayPalPDFExtractor
+                from .extractor_pdf_paypal import PayPalPDFExtractor
                 extractor = PayPalPDFExtractor(file_path)
-                return extractor.extract_transactions()
-            if "Consorsbank" in text or "KONTOAUSZUG" in text:
-                from .extractor_consorsbank import PDFConsorsbankExtractor
-                extractor = PDFConsorsbankExtractor(file_path, debug=True)
-            else:
-                from .extractor import PDFTransactionExtractor
-                extractor = PDFTransactionExtractor(file_path, debug=True)
+            elif "Consorsbank" in text or "KONTOAUSZUG" in text:
+                from .extractor_pdf_consorsbank import PDFConsorsbankExtractor
+                extractor = PDFConsorsbankExtractor(file_path, self.logger)
+            elif "ing-diba" in lower_text or "ingddeffxxx" in lower_text:
+                from .extractor_pdf_ing import IngPDFExtractor
+                extractor = IngPDFExtractor(file_path, self.logger)
+            elif "barclaycard" in lower_text or "barcdehaxx" in lower_text:
+                from .extractor_pdf_barclay import BarclaysPDFExtractor
+                extractor = BarclaysPDFExtractor(file_path, self.logger)
+        if 'extractor' in locals():
             return extractor.extract_transactions()
         else:
+            self.logger.info(f"No extractor found for {file_path}.")
             return []
 
     def console_output(self):
@@ -146,4 +138,4 @@ class TransactionProcessor:
             return
         print("\nAll Transactions:")
         for t in self.all_transactions:
-            print(f"{t.date}\t{t.description}\t{t.amount}\t{t.sender}\t{t.file_path}\t{t.bank}\t{t.id}")
+            print(f"{t.date}\t{t.description}\t{t.value}\t{t.sender}\t{t.transaction_source_document}\t{t.bank}\t{t.id}")
