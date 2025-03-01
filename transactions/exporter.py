@@ -42,9 +42,11 @@ class CSVExporter(BaseExporter):
                 writer.writerow([t.date, t.description, t.amount, t.account, t.file_path, t.bank, t.id])
         print(f"CSV file created: {self.output_file}")
 
+import os
+from jinja2 import Environment, FileSystemLoader
+
 class HTMLExporter(BaseExporter):
-    """Exportiert die Transaktionen in eine HTML-Datei mit filterbarer und sortierbarer Tabelle mittels DataTables.
-       Optional wird ein Hinweis zu den angewendeten Filtern angezeigt."""
+    """Exports transactions to an HTML file using a Jinja2 template."""
     def __init__(self, transactions, output_file, from_date=None, to_date=None):
         super().__init__(transactions, output_file)
         self.from_date = from_date
@@ -55,7 +57,7 @@ class HTMLExporter(BaseExporter):
             print("No transactions found to save.")
             return
 
-        # Erstelle einen Filter-Hinweis
+        # Build filter information
         filter_info = ""
         if self.from_date and self.to_date:
             filter_info = f"Filtered: {self.from_date} to {self.to_date}"
@@ -64,66 +66,32 @@ class HTMLExporter(BaseExporter):
         elif self.to_date:
             filter_info = f"Filtered: on or before {self.to_date}"
 
-        html = (
-            '<html><head><meta charset="utf-8"><title>Transactions</title>'
-            '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" '
-            'integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">'
-            '<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>'
-            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">'
-            '</head><body>'
-            "<div class='container my-4'>"
-            "<h1 class='mb-4'>Transactions</h1>"
-        )
-        if filter_info:
-            html += f"<p class='text-muted'><small>{filter_info}</small></p>"
-        html += (
-            "<table id='transactionsTable' class='table table-striped table-hover'>"
-            "<thead class='table-dark'><tr>"
-            "<th>Date</th><th>Description</th><th>Amount (EUR)</th>"
-            "<th>Account</th><th><i class='bi bi-file-earmark-text me-1'></i> File</th><th>Bank</th><th>ID</th>"
-            "</tr></thead><tbody>"
-        )
+        # Prepare data for template: add file_name field to each transaction
+        transactions_data = []
         for t in self.transactions:
-            tr_class = ""
-            if t.amount is None:
-                amount_html = f'<span class="text-danger"> No Value defined! </span>'
-                icon = '<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>'
-                tr_class = "table-warning" 
-            elif t.amount < 0:
-                amount_html = f'<span class="text-danger">{t.amount}</span>'
-                icon = '<i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>'
-            else:
-                amount_html = f'<span class="text-success">{t.amount}</span>'
-                icon = '<i class="bi bi-arrow-up-circle-fill text-success me-1"></i>'
-            file_link = f'<a href="{t.file_path}">{os.path.basename(t.file_path)}</a>'
-            html += (
-                f"<tr class='{tr_class}'>"
-                f"<td>{t.date}</td>"
-                f"<td>{t.description}</td>"
-                f"<td>{icon}{amount_html}</td>"
-                f"<td>{t.account}</td>"
-                f"<td>{file_link}</td>"
-                f"<td>{t.bank}</td>"
-                f"<td>{t.id}</td>"
-                f"</tr>"
-            )
-        html += (
-            "</tbody></table></div>"
-            '<script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>'
-            '<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>'
-            '<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>'
-            '<script>'
-            '$(document).ready(function() {'
-            '  $("#transactionsTable").DataTable({'
-            '    "order": [[ 0, "desc" ]],'
-            '    "pageLength": 25'
-            '  });'
-            '});'
-            '</script>'
-            "</body></html>"
+            d = {
+                "date": t.date,
+                "description": t.description,
+                "amount": t.amount,
+                "account": t.account,
+                "file_path": t.file_path,
+                "file_name": os.path.basename(t.file_path),
+                "bank": t.bank,
+                "id": t.id
+            }
+            transactions_data.append(d)
+
+        # Set up Jinja2 environment and load the template
+        env = Environment(loader=FileSystemLoader(searchpath="./templates"))
+        template = env.get_template("transactions_template.html.j2")
+
+        rendered_html = template.render(
+            filter_info=filter_info,
+            transactions=transactions_data
         )
+
         with open(self.output_file, "w", encoding="utf-8") as f:
-            f.write(html)
+            f.write(rendered_html)
         print(f"HTML file created: {self.output_file}")
 
 
