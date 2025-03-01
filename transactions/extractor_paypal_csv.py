@@ -23,10 +23,8 @@ class PayPalCSVExtractor:
                     row.get("Typ", "").strip()
                 ]).strip()
                 amount_str = row.get("Netto", "").replace(",", ".").strip()
-                try:
-                    amount = float(amount_str)
-                except Exception:
-                    amount = 0.0
+                amount = float(amount_str)
+                
                 # Ersetze Account durch From:
                 sender = row.get("PayPal-ID", "").strip()
                 # Neue Felder; hier beispielhaft aus optionalen Spalten (falls vorhanden)

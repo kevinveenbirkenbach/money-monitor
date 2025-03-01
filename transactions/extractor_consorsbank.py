@@ -23,7 +23,8 @@ class PDFConsorsbankExtractor:
         s = s.replace('.', '').replace(',', '.')
         try:
             return sign * float(s)
-        except Exception:
+        except Exception as e:
+            print(f"Exception: {e}")
             return None
 
     @staticmethod
@@ -113,10 +114,8 @@ class PDFConsorsbankExtractor:
                 description = block[:detail_pattern.search(block).start()].strip().replace('\n', ' ')
             else:
                 description = block.strip().replace('\n', ' ')
-            try:
-                amount_val = self.parse_amount(amount_extracted)
-            except Exception:
-                amount_val = 0.0
+            
+            amount_val = self.parse_amount(amount_extracted)
             full_description = f"{trans_type}: {description}"
             transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank", currency="", invoice="", to="")
             self.transactions.append(transaction)

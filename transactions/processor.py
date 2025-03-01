@@ -106,10 +106,7 @@ class TransactionProcessor:
             else:
                 return []
         elif ext == ".pdf":
-            try:
-                text = extract_text(file_path, maxpages=1)
-            except Exception:
-                text = ""
+            text = extract_text(file_path, maxpages=1)
             if "PayPal" in text and ("Händlerkonto-ID" in text or "Transaktionsübersicht" in text):
                 from .extractor_paypal_pdf import PayPalPDFExtractor
                 extractor = PayPalPDFExtractor(file_path)

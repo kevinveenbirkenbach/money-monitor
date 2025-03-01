@@ -34,15 +34,13 @@ class PayPalPDFExtractor:
             date_str = parts[0]
             try:
                 iso_date = datetime.strptime(date_str, "%d.%m.%Y").strftime("%Y-%m-%d")
-            except Exception:
+            except Exception as e:
+                print(f"Exception:{e}")
                 iso_date = date_str
             # Für die Beschreibung kombinieren wir z.B. Typ und Name (Spalten 1 bis 3)
             description = " ".join(parts[1:4])
             # Betrag: Letzte Spalte (Netto) – ersetze Komma durch Punkt
-            try:
-                amount = float(parts[-1].replace(",", "."))
-            except Exception:
-                amount = 0.0
+            amount = float(parts[-1].replace(",", "."))
             account = ""  # Kein Konto-Feld vorhanden
             bank = "PayPal"
             transaction_code = parts[4]  # Annahme: 5. Spalte enthält den Transaktionscode

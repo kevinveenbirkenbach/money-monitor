@@ -28,8 +28,10 @@ class DKBCSVExtractor:
             try:
                 dt = datetime.strptime(date_str, fmt)
                 return dt.strftime("%Y-%m-%d")
-            except Exception:
+            except Exception as e:
+                print(f"Exception:{e}")
                 continue
+
         return date_str
 
     def parse_amount(self, amount_str):
@@ -50,11 +52,14 @@ class DKBCSVExtractor:
         elif amount_str.endswith('-'):
             amount_str = amount_str[:-1].strip()
             sign = -1
+        
         try:
             value = float(amount_str.replace(".", "").replace(",", "."))
             return sign * value
-        except Exception:
+        except Exception as e:
+            print(f"Exception: {e}")
             return 0.0
+
 
 # ... (Importe und Docstring bleiben unverändert)
 
