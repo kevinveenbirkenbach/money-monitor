@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
 from .transaction import Transaction
+from .logger import Logger
 
 class DKBCSVExtractor:
     """
@@ -17,6 +18,7 @@ class DKBCSVExtractor:
         self.csv_path = csv_path
         self.transactions = []
         self.debug = debug
+        self.logger = Logger(debug=debug)
 
     def parse_date(self, date_str):
         date_str = date_str.strip().replace('"', '')
@@ -24,14 +26,13 @@ class DKBCSVExtractor:
             try:
                 dt = datetime.strptime(date_str, fmt)
                 return dt.strftime("%Y-%m-%d")
-            except Exception as e:
+            except Exception:
                 continue
-        print(f"Error: Date string '{date_str}' does not match expected formats (%d.%m.%Y or %d.%m.%y) in file {self.csv_path}.")
+        self.logger.error(f"Date string '{date_str}' does not match expected formats (%d.%m.%Y or %d.%m.%y) in file {self.csv_path}.")
         return date_str
 
     def parse_amount(self, amount_str):
         amount_str = amount_str.strip().replace('"', '')
-        # Remove non-breaking spaces and extra spaces
         amount_str = amount_str.replace("\u00A0", "").replace(" ", "")
         sign = 1
         if amount_str.endswith('+'):
@@ -44,8 +45,7 @@ class DKBCSVExtractor:
             value = float(amount_str.replace(".", "").replace(",", "."))
             return sign * value
         except Exception as e:
-            if self.debug:
-                print(f"[DEBUG] parse_amount: Could not convert '{amount_str}' in file {self.csv_path}: {e}")
+            self.logger.error(f"Could not convert amount '{amount_str}' in file {self.csv_path}: {e}")
             return 0.0
 
     def extract_transactions(self):
@@ -60,7 +60,7 @@ class DKBCSVExtractor:
                 break
         
         if header_row_index is None:
-            print(f"No header row found in {self.csv_path}. This may not be a valid DKB CSV file.")
+            self.logger.error(f"No header row found in {self.csv_path}. This may not be a valid DKB CSV file.")
             return []
         
         headers = [h.strip().replace('"', '') for h in rows[header_row_index]]
@@ -73,10 +73,8 @@ class DKBCSVExtractor:
             booking_date = self.parse_date(data.get("Buchungsdatum", ""))
             description = data.get("Verwendungszweck", "").strip()
             amount = self.parse_amount(data.get("Betrag (€)", "0"))
-            # Instead of account, we now use sender
             sender = data.get("IBAN", "").strip()
-            # New fields
-            currency = "EUR"  # default value
+            currency = "EUR"
             invoice = data.get("Kundenreferenz", "").strip() if "Kundenreferenz" in data else ""
             to_field = data.get("Zahlungsempfänger*in", "").strip() if "Zahlungsempfänger*in" in data else ""
             file_path = self.csv_path

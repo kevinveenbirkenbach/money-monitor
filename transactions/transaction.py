@@ -2,7 +2,7 @@ import hashlib
 import base64
 
 class Transaction:
-    """Repräsentiert eine einzelne Transaktion."""
+    """Represents a single transaction."""
     def __init__(self, date, description, amount, sender, file_path, bank, currency="", invoice="", to=""):
         self.date = date
         self.description = description
@@ -31,4 +31,3 @@ class Transaction:
             f"Amount: {self.amount}, Sender: {self.sender}, Currency: {self.currency}, "
             f"Invoice: {self.invoice}, To: {self.to}, File Path: {self.file_path}, Bank: {self.bank})"
         )
-

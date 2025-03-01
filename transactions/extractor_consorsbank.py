@@ -2,18 +2,19 @@ import re
 from datetime import datetime
 from pdfminer.high_level import extract_text
 from .transaction import Transaction
+from .logger import Logger
 
 class PDFConsorsbankExtractor:
-    """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
+    """Extracts transactions from a Consorsbank PDF."""
     def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
         self.transactions = []
         self.previous_balance = None
-        self.debug=debug
+        self.debug = debug
+        self.logger = Logger(debug=debug)
 
     @staticmethod
     def parse_amount(s):
-        """Wandelt einen Betrag im Format '34.360,45+' oder '50,00+' in einen float um."""
         s = s.strip()
         sign = 1
         if s.endswith('+'):
@@ -25,12 +26,11 @@ class PDFConsorsbankExtractor:
         try:
             return sign * float(s)
         except Exception as e:
-            print(f"Exception: {e}")
+            print(f"\033[91m[ERROR]\033[0m Could not parse amount '{s}': {e}")
             return None
 
     @staticmethod
     def format_amount(val):
-        """Formatiert einen float-Betrag ins deutsche Format, z.B. '50,00+'."""
         if val is None:
             return ""
         s = f"{abs(val):.2f}".replace('.', ',')
@@ -38,11 +38,6 @@ class PDFConsorsbankExtractor:
 
     @staticmethod
     def convert_to_iso(datum_str, global_year):
-        """
-        Konvertiert einen Datumseintrag in ISO-Format (YYYY-MM-DD).
-        Falls datum_str nur "DD.MM." ist, wird das global_year ergänzt;
-        Falls bereits ein Jahr vorhanden ist, wird bei zweistelliger Jahreszahl '20' vorangestellt.
-        """
         datum_str = datum_str.strip()
         m = re.fullmatch(r'(\d{2})\.(\d{2})\.(\d{2,4})', datum_str)
         if m:
@@ -121,7 +116,7 @@ class PDFConsorsbankExtractor:
             transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank", currency="", invoice="", to="")
             self.transactions.append(transaction)
             if self.debug:
-                print(f"[DEBUG] Transaction {transaction} appended.")
+                self.logger.debug(f"Transaction {transaction} appended.")
             if current_balance is not None:
                 self.previous_balance = current_balance
         return self.transactions

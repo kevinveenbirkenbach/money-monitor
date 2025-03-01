@@ -5,14 +5,14 @@ try:
     import yaml
 except ImportError:
     yaml = None
+from .logger import Logger
 
 class BaseExporter:
-    """Basisklasse für Exporter. Sie sortiert die Transaktionen und stellt eine gemeinsame Methode
-    zur Umwandlung in ein Dictionary bereit, das alle Felder (inklusive Bank) enthält."""
-    def __init__(self, transactions, output_file):
-        # Sortiere die Transaktionen nach Datum
+    """Base class for exporters. It sorts transactions and converts them to a dictionary."""
+    def __init__(self, transactions, output_file, debug=False, quiet=False):
         self.transactions = sorted(transactions, key=lambda t: t.date)
         self.output_file = output_file
+        self.logger = Logger(debug=debug, quiet=quiet)
 
     def get_data_as_dicts(self):
         data = []
@@ -32,35 +32,36 @@ class BaseExporter:
         return data
 
 class CSVExporter(BaseExporter):
-    """Exportiert die Transaktionen in eine CSV-Datei."""
+    """Exports transactions to a CSV file."""
     def export(self):
         if not self.transactions:
-            print("No transactions found to save.")
+            self.logger.warning("No transactions found to save.")
             return
-        with open(self.output_file, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Date", "Description", "Amount (EUR)", "From", "File Path", "Bank", "ID"])
-            for t in self.transactions:
-                writer.writerow([t.date, t.description, t.amount, t.sender, t.file_path, t.bank, t.id])
-
-        print(f"CSV file created: {self.output_file}")
+        try:
+            with open(self.output_file, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Date", "Description", "Amount (EUR)", "From", "File Path", "Bank", "ID"])
+                for t in self.transactions:
+                    writer.writerow([t.date, t.description, t.amount, t.sender, t.file_path, t.bank, t.id])
+            self.logger.info(f"CSV file created: {self.output_file}")
+        except Exception as e:
+            self.logger.error(f"Error exporting CSV: {e}")
 
 import os
 from jinja2 import Environment, FileSystemLoader
 
 class HTMLExporter(BaseExporter):
     """Exports transactions to an HTML file using a Jinja2 template."""
-    def __init__(self, transactions, output_file, from_date=None, to_date=None):
-        super().__init__(transactions, output_file)
+    def __init__(self, transactions, output_file, from_date=None, to_date=None, debug=False, quiet=False):
+        super().__init__(transactions, output_file, debug=debug, quiet=quiet)
         self.from_date = from_date
         self.to_date = to_date
 
     def export(self):
         if not self.transactions:
-            print("No transactions found to save.")
+            self.logger.warning("No transactions found to save.")
             return
 
-        # Build filter information
         filter_info = ""
         if self.from_date and self.to_date:
             filter_info = f"Filtered: {self.from_date} to {self.to_date}"
@@ -72,41 +73,43 @@ class HTMLExporter(BaseExporter):
         for t in self.transactions:
             t.file_name = os.path.basename(t.file_path)
 
-        # Set up Jinja2 environment and load the template
         env = Environment(loader=FileSystemLoader(searchpath="./templates"))
         template = env.get_template("transactions_template.html.j2")
-
-        rendered_html = template.render(
-            filter_info=filter_info,
-            transactions=self.transactions
-        )
-
-        with open(self.output_file, "w", encoding="utf-8") as f:
-            f.write(rendered_html)
-        print(f"HTML file created: {self.output_file}")
-
+        rendered_html = template.render(filter_info=filter_info, transactions=self.transactions)
+        try:
+            with open(self.output_file, "w", encoding="utf-8") as f:
+                f.write(rendered_html)
+            self.logger.info(f"HTML file created: {self.output_file}")
+        except Exception as e:
+            self.logger.error(f"Error exporting HTML: {e}")
 
 class JSONExporter(BaseExporter):
-    """Exportiert die Transaktionen in eine JSON-Datei."""
+    """Exports transactions to a JSON file."""
     def export(self):
         if not self.transactions:
-            print("No transactions found to save.")
+            self.logger.warning("No transactions found to save.")
             return
         data = self.get_data_as_dicts()
-        with open(self.output_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"JSON file created: {self.output_file}")
+        try:
+            with open(self.output_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            self.logger.info(f"JSON file created: {self.output_file}")
+        except Exception as e:
+            self.logger.error(f"Error exporting JSON: {e}")
 
 class YamlExporter(BaseExporter):
-    """Exportiert die Transaktionen in eine YAML-Datei."""
+    """Exports transactions to a YAML file."""
     def export(self):
         if not self.transactions:
-            print("No transactions found to save.")
+            self.logger.warning("No transactions found to save.")
             return
         if yaml is None:
-            print("PyYAML is not installed. Cannot export to YAML.")
+            self.logger.error("PyYAML is not installed. Cannot export to YAML.")
             return
         data = self.get_data_as_dicts()
-        with open(self.output_file, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True)
-        print(f"YAML file created: {self.output_file}")
+        try:
+            with open(self.output_file, "w", encoding="utf-8") as f:
+                yaml.dump(data, f, allow_unicode=True)
+            self.logger.info(f"YAML file created: {self.output_file}")
+        except Exception as e:
+            self.logger.error(f"Error exporting YAML: {e}")

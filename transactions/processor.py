@@ -4,6 +4,7 @@ from pdfminer.high_level import extract_text
 from .extractor import PDFTransactionExtractor
 from .extractor_consorsbank import PDFConsorsbankExtractor
 from .extractor_dkb_csv import DKBCSVExtractor
+from .logger import Logger
 
 class TransactionProcessor:
     """Coordinates reading files (PDF, CSV) from multiple paths and exporting transactions."""
@@ -21,16 +22,17 @@ class TransactionProcessor:
         self.quiet = quiet
         self.debug = debug
         self.print_cmd = print_cmd
+        self.logger = Logger(debug=self.debug, quiet=self.quiet)
 
     def log(self, message, level="info"):
-        # If quiet is enabled, only log if it's a CMD print (handled elsewhere)
-        if self.quiet and level != "cmd":
-            return
         if level == "debug":
-            if self.debug:
-                print(message)
+            self.logger.debug(message)
+        elif level == "warning":
+            self.logger.warning(message)
+        elif level == "error":
+            self.logger.error(message)
         else:
-            print(message)
+            self.logger.info(message)
 
     def process(self):
         pdf_csv_files = []
@@ -50,11 +52,11 @@ class TransactionProcessor:
             elif os.path.isfile(path) and path.lower().endswith((".pdf", ".csv")):
                 pdf_csv_files.append(path)
             else:
-                self.log(f"Invalid input path: {path}")
+                self.log(f"Invalid input path: {path}", level="warning")
         if not pdf_csv_files:
-            self.log("No PDF/CSV files found in the given paths.")
+            self.log("No PDF/CSV files found in the given paths.", level="warning")
             return
-        self.log(f"Found {len(pdf_csv_files)} files.", "debug")
+        self.log(f"Found {len(pdf_csv_files)} files.", level="debug")
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             results = list(executor.map(self.extract_from_file, pdf_csv_files))
@@ -109,11 +111,10 @@ class TransactionProcessor:
             content = " ".join(lines)
             if "Transaktionscode" in content or "PayPal" in content:
                 from .extractor_paypal_csv import PayPalCSVExtractor
-                extractor = PayPalCSVExtractor(file_path)  # you may update PayPalCSVExtractor similarly if needed
+                extractor = PayPalCSVExtractor(file_path)
                 return extractor.extract_transactions()
             elif "Buchungsdatum" in content:
                 from .extractor_dkb_csv import DKBCSVExtractor
-                # Pass the debug flag if needed. You might decide to pass a global flag here.
                 extractor = DKBCSVExtractor(file_path, debug=True)
                 return extractor.extract_transactions()
             else:
@@ -125,7 +126,7 @@ class TransactionProcessor:
                 text = ""
             if "PayPal" in text and ("Händlerkonto-ID" in text or "Transaktionsübersicht" in text):
                 from .extractor_paypal_pdf import PayPalPDFExtractor
-                extractor = PayPalPDFExtractor(file_path)  # Update similarly if needed
+                extractor = PayPalPDFExtractor(file_path)
                 return extractor.extract_transactions()
             if "Consorsbank" in text or "KONTOAUSZUG" in text:
                 from .extractor_consorsbank import PDFConsorsbankExtractor

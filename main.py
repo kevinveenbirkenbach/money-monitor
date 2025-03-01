@@ -1,5 +1,6 @@
 import argparse
 from transactions.processor import TransactionProcessor
+from transactions.logger import Logger
 
 def main():
     parser = argparse.ArgumentParser(
@@ -30,6 +31,9 @@ def main():
                         help="Print the constructed CMD commands before executing them.")
     args = parser.parse_args()
 
+    logger = Logger(debug=args.debug, quiet=args.quiet)
+    logger.info("Starting main process...")
+
     processor = TransactionProcessor(
         input_paths=args.input_paths, 
         output_base=args.output_base,
@@ -41,7 +45,7 @@ def main():
         create_dirs=args.create_dirs,
         quiet=args.quiet,
         debug=args.debug,
-        print_cmd=args.print_cmd  # Pass the print-cmd flag to processor if needed
+        print_cmd=args.print_cmd
     )
     processor.process()
 

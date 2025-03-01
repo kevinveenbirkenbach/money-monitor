@@ -2,67 +2,54 @@ import re
 from datetime import datetime
 from pdfminer.high_level import extract_text
 from .transaction import Transaction
+from .logger import Logger
 
 class PayPalPDFExtractor:
-    """Extrahiert Transaktionen aus einem PayPal PDF-Kontoauszug.
-    Dabei wird der PayPal Transaktionscode als ID gesetzt."""
-    def __init__(self, pdf_path):
+    """Extracts transactions from a PayPal PDF account statement.
+    The PayPal transaction code is used as the ID."""
+    def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
         self.transactions = []
+        self.debug = debug
+        self.logger = Logger(debug=debug)
 
     def extract_transactions(self):
         text = extract_text(self.pdf_path)
         lines = text.splitlines()
-        # Finde die Header-Zeile, in der "Transaktionscode" vorkommt.
         header_index = None
         for i, line in enumerate(lines):
             if "Transaktionscode" in line:
                 header_index = i
                 break
         if header_index is None:
-            return []  # Kein Hinweis auf PayPal-Transaktionen
-        # Ab der Header-Zeile werden die Transaktionszeilen angenommen.
+            self.logger.error(f"No 'Transaktionscode' header found in {self.pdf_path}.")
+            return []
         for line in lines[header_index+1:]:
-            # Wir nehmen Zeilen, die mit einem Datum (DD.MM.YYYY) beginnen
             if not re.match(r"^\d{2}\.\d{2}\.\d{4}", line):
                 continue
             parts = line.split()
             if len(parts) < 6:
-                continue  # nicht genügend Spalten
-            # Spaltenbeispiel (vereinfachte Annahme):
-            # parts[0]: Datum, parts[4]: Transaktionscode, parts[-1]: Netto-Betrag
+                self.logger.warning(f"Skipping line in {self.pdf_path} due to insufficient columns: {line}")
+                continue
             date_str = parts[0]
             try:
                 iso_date = datetime.strptime(date_str, "%d.%m.%Y").strftime("%Y-%m-%d")
             except Exception as e:
-                print(f"Exception:{e}")
+                self.logger.error(f"Date conversion error in {self.pdf_path} for '{date_str}': {e}")
                 iso_date = date_str
-            # Für die Beschreibung kombinieren wir z.B. Typ und Name (Spalten 1 bis 3)
             description = " ".join(parts[1:4])
-            # Betrag: Letzte Spalte (Netto) – ersetze Komma durch Punkt
-            amount = float(parts[-1].replace(",", "."))
-            account = ""  # Kein Konto-Feld vorhanden
+            try:
+                amount = float(parts[-1].replace(",", "."))
+            except Exception as e:
+                self.logger.error(f"Amount conversion error in {self.pdf_path} for line '{line}': {e}")
+                amount = 0.0
+            sender = ""  # No sender information available
+            currency = ""
+            invoice = ""
+            to_field = ""
             bank = "PayPal"
-            transaction_code = parts[4]  # Annahme: 5. Spalte enthält den Transaktionscode
-            # Kein Konto-Feld vorhanden – daher als leeren String übergeben
-            sender = ""
-            currency = ""   # ggf. leer, falls keine Information vorhanden
-            invoice = ""    # z.B. könnte hier später eine Rechnungsnummer stehen
-            to_field = ""   # z.B. der Empfänger; hier ebenfalls als leerer String
-
-            transaction = Transaction(
-                iso_date,
-                description,
-                amount,
-                sender,
-                self.pdf_path,
-                bank,
-                currency,
-                invoice,
-                to_field
-            )
-
-            # Setze den ID auf den PayPal Transaktionscode
+            transaction_code = parts[4]
+            transaction = Transaction(iso_date, description, amount, sender, self.pdf_path, bank, currency, invoice, to_field)
             transaction.id = transaction_code
             self.transactions.append(transaction)
         return self.transactions

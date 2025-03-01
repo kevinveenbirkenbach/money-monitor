@@ -2,6 +2,7 @@
 import os
 import subprocess
 import argparse
+from transactions.logger import Logger
 
 def main():
     parser = argparse.ArgumentParser(
@@ -25,6 +26,8 @@ def main():
                         help="Enable detailed debug output")
     args = parser.parse_args()
 
+    logger = Logger(debug=args.debug, quiet=args.quiet)
+
     base_dir = args.base_dir
     banks = args.banks
     # Process each bank individually
@@ -32,7 +35,7 @@ def main():
         input_path = os.path.join(base_dir, bank, "Bank Statements")
         output_file = os.path.join(base_dir, bank, "Transactions/transactions")  # base output name without extension
         if not args.quiet:
-            print(f"Processing {bank} from {input_path} ...")
+            logger.info(f"Processing {bank} from {input_path} ...")
         cmd = ["python", "main.py", "-r", input_path, output_file, "--export-types", "csv", "html"]
         if args.from_date:
             cmd.extend(["--from", args.from_date])
@@ -44,7 +47,7 @@ def main():
         if args.debug:
             cmd.append("--debug")
         if args.print_cmd:
-            print("CMD:", " ".join(cmd))
+            logger.info("CMD: " + " ".join(cmd))
         subprocess.run(cmd)
 
     # Now process all banks together for a combined export
@@ -60,7 +63,7 @@ def main():
     if args.debug:
         cmd.append("--debug")
     if args.print_cmd:
-        print("CMD:", " ".join(cmd))
+        logger.info("CMD: " + " ".join(cmd))
     subprocess.run(cmd)
 
 if __name__ == "__main__":
