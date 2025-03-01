@@ -3,21 +3,22 @@ import concurrent.futures
 from pdfminer.high_level import extract_text
 from .extractor import PDFTransactionExtractor
 from .extractor_consorsbank import PDFConsorsbankExtractor
-from .exporter import CSVExporter
 
 class TransactionProcessor:
     """Koordiniert das Einlesen der PDFs aus mehreren Pfaden und den Export der Transaktionen."""
-    def __init__(self, input_paths, output_csv, print_transactions=False, recursive=False):
-        # input_paths ist eine Liste von Pfaden (Dateien oder Verzeichnisse)
+    def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_formats=None):
+        # input_paths: Liste von Pfaden (Dateien oder Verzeichnisse)
         self.input_paths = input_paths
-        self.output_csv = output_csv
+        self.output_base = output_base
         self.all_transactions = []
         self.print_transactions = print_transactions
         self.recursive = recursive
+        # export_formats ist ein Dictionary z.B. {"csv": True, "html": False, ...}
+        self.export_formats = export_formats or {}
 
     def process(self):
         pdf_files = []
-        # Iteriere über alle übergebenen Pfade
+        # Durchlaufe alle übergebenen Pfade
         for path in self.input_paths:
             if os.path.isdir(path):
                 if self.recursive:
@@ -46,27 +47,50 @@ class TransactionProcessor:
             for transactions in results:
                 self.all_transactions.extend(transactions)
 
-        csv_exporter = CSVExporter(self.all_transactions, self.output_csv)
-        csv_exporter.export()
+        # Exportiere in die angeforderten Formate
+        for fmt, flag in self.export_formats.items():
+            if flag:
+                ext = f".{fmt}"
+                output_file = self.output_base
+                if not output_file.endswith(ext):
+                    output_file += ext
+                if fmt == "csv":
+                    from .exporter import CSVExporter
+                    exporter = CSVExporter(self.all_transactions, output_file)
+                    exporter.export()
+                elif fmt == "html":
+                    from .exporter import HTMLExporter
+                    exporter = HTMLExporter(self.all_transactions, output_file)
+                    exporter.export()
+                elif fmt == "json":
+                    from .exporter import JSONExporter
+                    exporter = JSONExporter(self.all_transactions, output_file)
+                    exporter.export()
+                elif fmt == "yaml":
+                    from .exporter import YamlExporter
+                    exporter = YamlExporter(self.all_transactions, output_file)
+                    exporter.export()
 
         if self.print_transactions:
-            self.cat_transactions()
+            self.console_output()
 
     @staticmethod
     def extract_from_file(pdf_file):
-        # Lese die erste Seite mit pdfminer, um den Typ zu ermitteln.
+        # Lese die erste Seite mittels pdfminer, um den Typ zu ermitteln
         try:
             text = extract_text(pdf_file, maxpages=1)
         except Exception:
             text = ""
-        # Wenn typische Stichwörter für Consorsbank vorhanden sind, benutze den Consorsbank-Extractor.
+        # Bei typischen Stichwörtern für Consorsbank den entsprechenden Extractor verwenden
         if "Consorsbank" in text or "KONTOAUSZUG" in text:
+            from .extractor_consorsbank import PDFConsorsbankExtractor
             extractor = PDFConsorsbankExtractor(pdf_file)
         else:
+            from .extractor import PDFTransactionExtractor
             extractor = PDFTransactionExtractor(pdf_file)
         return extractor.extract_transactions()
 
-    def cat_transactions(self):
+    def console_output(self):
         """Gibt alle Transaktionen zeilenweise auf der Konsole aus."""
         print("\nAlle Transaktionen:")
         for t in self.all_transactions:
