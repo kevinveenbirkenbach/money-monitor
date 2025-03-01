@@ -18,20 +18,15 @@ class DKBCSVExtractor:
         self.transactions = []
 
     def parse_date(self, date_str):
-        """
-        Parses a date string.
-        Expected format is "DD.MM.YY" or "DD.MM.YYYY". Two-digit years are assumed to be 20XX.
-        Returns a string in ISO format "YYYY-MM-DD".
-        """
         date_str = date_str.strip().replace('"', '')
         for fmt in ("%d.%m.%Y", "%d.%m.%y"):
             try:
                 dt = datetime.strptime(date_str, fmt)
                 return dt.strftime("%Y-%m-%d")
-            except Exception as e:
-                print(f"Exception:{e}")
+            except Exception:
                 continue
-
+        # If no format matches, print an error message
+        print(f"Error: Date string '{date_str}' does not match expected formats (%d.%m.%Y or %d.%m.%y).")
         return date_str
 
     def parse_amount(self, amount_str):
