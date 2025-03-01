@@ -7,22 +7,31 @@ from .exporter import CSVExporter
 
 class TransactionProcessor:
     """Koordiniert das Einlesen der PDFs aus mehreren Pfaden und den Export der Transaktionen."""
-    def __init__(self, input_paths, output_csv, print_transactions=False):
-        # input_paths ist nun eine Liste von Pfaden (Dateien oder Verzeichnisse)
+    def __init__(self, input_paths, output_csv, print_transactions=False, recursive=False):
+        # input_paths ist eine Liste von Pfaden (Dateien oder Verzeichnisse)
         self.input_paths = input_paths
         self.output_csv = output_csv
         self.all_transactions = []
         self.print_transactions = print_transactions
+        self.recursive = recursive
 
     def process(self):
         pdf_files = []
         # Iteriere über alle übergebenen Pfade
         for path in self.input_paths:
             if os.path.isdir(path):
-                pdf_files.extend(
-                    [os.path.join(path, file_name)
-                     for file_name in os.listdir(path) if file_name.endswith(".pdf")]
-                )
+                if self.recursive:
+                    # Rekursive Suche mit os.walk
+                    for root, _, files in os.walk(path):
+                        for file_name in files:
+                            if file_name.endswith(".pdf"):
+                                pdf_files.append(os.path.join(root, file_name))
+                else:
+                    # Nur oberste Ebene durchsuchen
+                    pdf_files.extend(
+                        [os.path.join(path, file_name)
+                         for file_name in os.listdir(path) if file_name.endswith(".pdf")]
+                    )
             elif os.path.isfile(path) and path.endswith(".pdf"):
                 pdf_files.append(path)
             else:
