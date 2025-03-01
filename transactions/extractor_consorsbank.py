@@ -4,7 +4,6 @@ from pdfminer.high_level import extract_text
 from .transaction import Transaction
 from .logger import Logger
 
-
 class PDFConsorsbankExtractor:
     def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
@@ -13,8 +12,7 @@ class PDFConsorsbankExtractor:
         self.debug = debug
         self.logger = Logger(debug=debug)
 
-    @staticmethod
-    def parse_amount(s):
+    def parse_amount(self,s):
         s = s.strip()
         sign = 1
         if s.endswith('+'):
@@ -26,8 +24,7 @@ class PDFConsorsbankExtractor:
         try:
             return sign * float(s)
         except Exception as e:
-            print(f"[ERROR] Could not parse amount '{s}': {e}")
-            return None
+            self.logger.debug(f"Could not parse amount '{s}': {e}.")
 
     @staticmethod
     def format_amount(val):
@@ -112,11 +109,23 @@ class PDFConsorsbankExtractor:
                 description = block.strip().replace('\n', ' ')
             
             amount_val = self.parse_amount(amount_extracted)
-            full_description = f"{trans_type}: {description}"
-            transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank", currency="", invoice="", to="")
-            self.transactions.append(transaction)
-            if self.debug:
-                self.logger.debug(f"Transaction {transaction} appended.")
-            if current_balance is not None:
-                self.previous_balance = current_balance
+            if amount_val:
+                full_description = f"{trans_type}: {description}"
+
+                # Sender und Receiver anpassen
+                account = ""  # Account wird bei Bedarf später gesetzt
+                if amount_val < 0:
+                    sender = account
+                    receiver = ""
+                else:
+                    sender = ""
+                    receiver = account
+
+                transaction = Transaction(datum_iso, full_description, amount_val, sender, receiver, account, self.pdf_path, "Consorsbank", "", "")
+                self.transactions.append(transaction)
+                self.logger.info(f"Transaction {transaction} appended.")
+                if current_balance is not None:
+                    self.previous_balance = current_balance
+            else:
+                self.logger.warning(f"Transaction not appended, due to missing amount_val.")
         return self.transactions

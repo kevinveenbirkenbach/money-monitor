@@ -34,7 +34,6 @@ class DKBCSVExtractor:
             return sign * float(amount_str.replace(".", "").replace(",", "."))
         except ValueError as e:
             self.logger.error(f"Failed to convert amount '{amount_str}' in file {self.csv_path}: {e}")
-            return 0.0
 
     def extract_transactions(self):
         with open(self.csv_path, newline='', encoding='utf-8') as f:
@@ -54,17 +53,28 @@ class DKBCSVExtractor:
                 continue
 
             data = dict(zip(headers, row))
-            transaction = Transaction(
-                self.parse_date(data.get("Buchungsdatum", "")),
-                data.get("Verwendungszweck", "").strip(),
-                self.parse_amount(data.get("Betrag (€)", "0")),
-                data.get("IBAN", "").strip(),
-                self.csv_path,
-                "DKB",
-                "EUR",
-                data.get("Kundenreferenz", "").strip(),
-                data.get("Zahlungsempfänger*in", "").strip()
-            )
-            self.transactions.append(transaction)
+            # Konto (IBAN) wird zu "sender" wenn Betrag negativ ist, ansonsten zu "receiver"
+            account = data.get("IBAN", "").strip()
+            amount = self.parse_amount(data.get("Betrag (€)", "0"))
+            if amount:
+                sender = account if amount < 0 else ""  # Negativer Betrag bedeutet, dass der Sender das Konto ist
+                receiver = account if amount >= 0 else ""  # Positiver Betrag bedeutet, dass der Empfänger das Konto ist
+
+                transaction = Transaction(
+                    self.parse_date(data.get("Buchungsdatum", "")),
+                    data.get("Verwendungszweck", "").strip(),
+                    amount,
+                    sender,
+                    receiver,
+                    account,
+                    self.csv_path,
+                    "DKB",
+                    "EUR",
+                    data.get("Kundenreferenz", "").strip()
+                )
+                self.transactions.append(transaction)
+                self.logger.debug(f"Transaction {transaction} appended.")
+            else:
+                self.logger.debug(f"Transaction {data} not appended, due to missing amount.")
 
         return self.transactions

@@ -3,7 +3,6 @@ from datetime import datetime
 from .transaction import Transaction
 from .logger import Logger
 
-
 class PayPalCSVExtractor:
     def __init__(self, csv_path, debug=False):
         self.csv_path = csv_path
@@ -41,8 +40,11 @@ class PayPalCSVExtractor:
                 file_path = self.csv_path
                 bank = "PayPal"
                 transaction_code = row.get("Transaktionscode", "").strip()
-                transaction = Transaction(iso_date, description, amount, sender, file_path, bank, currency, invoice, to_field)
-                if transaction_code:
-                    transaction.id = transaction_code
+
+                # Hier setzen wir das Account-Feld basierend auf dem Betrag
+                account = sender if amount < 0 else to_field
+
+                transaction = Transaction(iso_date, description, amount, sender, to_field, account, file_path, bank, currency, invoice)
+                transaction.id = transaction_code
                 self.transactions.append(transaction)
         return self.transactions

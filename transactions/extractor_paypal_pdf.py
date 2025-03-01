@@ -4,7 +4,6 @@ from pdfminer.high_level import extract_text
 from .transaction import Transaction
 from .logger import Logger
 
-
 class PayPalPDFExtractor:
     def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
@@ -26,7 +25,7 @@ class PayPalPDFExtractor:
             self.logger.error(f"No 'Transaktionscode' header found in {self.pdf_path}.")
             return []
 
-        for line in lines[header_index+1:]:
+        for line in lines[header_index + 1:]:
             if not re.match(r"^\d{2}\.\d{2}\.\d{4}", line):
                 continue
 
@@ -56,7 +55,10 @@ class PayPalPDFExtractor:
             bank = "PayPal"
             transaction_code = parts[4]
 
-            transaction = Transaction(iso_date, description, amount, sender, self.pdf_path, bank, currency, invoice, to_field)
+            # Hier setzen wir das Account-Feld basierend auf dem Betrag
+            account = sender if amount < 0 else to_field
+
+            transaction = Transaction(iso_date, description, amount, sender, to_field, account, self.pdf_path, bank, currency, invoice)
             transaction.id = transaction_code
             self.transactions.append(transaction)
 
