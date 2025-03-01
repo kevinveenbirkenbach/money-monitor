@@ -47,7 +47,7 @@ class PayPalPDFExtractor:
             bank = "PayPal"
             transaction_code = parts[4]  # Annahme: 5. Spalte enthält den Transaktionscode
             # Kein Konto-Feld vorhanden – daher als leeren String übergeben
-            from_ = ""
+            sender = ""
             currency = ""   # ggf. leer, falls keine Information vorhanden
             invoice = ""    # z.B. könnte hier später eine Rechnungsnummer stehen
             to_field = ""   # z.B. der Empfänger; hier ebenfalls als leerer String
@@ -56,7 +56,7 @@ class PayPalPDFExtractor:
                 iso_date,
                 description,
                 amount,
-                from_,
+                sender,
                 self.pdf_path,
                 bank,
                 currency,
