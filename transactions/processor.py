@@ -92,18 +92,23 @@ class TransactionProcessor:
     def extract_from_file(file_path):
         ext = os.path.splitext(file_path)[1].lower()
         if ext == ".csv":
+            # Read the first few lines of the file to determine its type.
             with open(file_path, encoding="utf-8") as f:
-                header = f.readline()
-            if "Transaktionscode" in header or "PayPal" in header:
+                lines = [f.readline() for _ in range(10)]
+            content = " ".join(lines)
+            # If the file contains "Transaktionscode" or "PayPal", use the PayPal CSV extractor.
+            if "Transaktionscode" in content or "PayPal" in content:
                 from .extractor_paypal_csv import PayPalCSVExtractor
                 extractor = PayPalCSVExtractor(file_path)
                 return extractor.extract_transactions()
-            if "Buchungsdatum" in header:
+            # If the file contains "Buchungsdatum", assume it is a DKB CSV file.
+            elif "Buchungsdatum" in content:
                 from .extractor_dkb_csv import DKBCSVExtractor
                 extractor = DKBCSVExtractor(file_path)
                 return extractor.extract_transactions()
             else:
-                return []  # Unbekanntes CSV-Format
+                # Unrecognized CSV format – return empty list.
+                return []
         elif ext == ".pdf":
             try:
                 text = extract_text(file_path, maxpages=1)
@@ -122,6 +127,7 @@ class TransactionProcessor:
             return extractor.extract_transactions()
         else:
             return []
+
 
     def console_output(self):
         print("\nAlle Transaktionen:")

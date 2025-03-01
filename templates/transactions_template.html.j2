@@ -45,7 +45,7 @@
       </tfoot>
       <tbody>
         {% for t in transactions %}
-          <tr class="{% if t.amount is not none and t.amount < 0 %}table-warning{% endif %}">
+          <tr class="{% if t.amount is none %}table-warning{% endif %}">
             <td>{{ t.date }}</td>
             <td>{{ t.description }}</td>
             <td>
