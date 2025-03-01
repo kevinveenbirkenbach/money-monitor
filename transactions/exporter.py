@@ -43,25 +43,40 @@ class CSVExporter(BaseExporter):
         print(f"CSV file created: {self.output_file}")
 
 class HTMLExporter(BaseExporter):
-    """Exportiert die Transaktionen in eine HTML-Datei mit filterbarer und sortierbarer Tabelle mittels DataTables."""
+    """Exportiert die Transaktionen in eine HTML-Datei mit filterbarer und sortierbarer Tabelle mittels DataTables.
+       Optional wird ein Hinweis zu den angewendeten Filtern angezeigt."""
+    def __init__(self, transactions, output_file, from_date=None, to_date=None):
+        super().__init__(transactions, output_file)
+        self.from_date = from_date
+        self.to_date = to_date
+
     def export(self):
         if not self.transactions:
             print("No transactions found to save.")
             return
 
-        # Bootstrap CSS, DataTables CSS und Bootstrap Icons einbinden
+        # Erstelle einen Filter-Hinweis
+        filter_info = ""
+        if self.from_date and self.to_date:
+            filter_info = f"Filtered: {self.from_date} to {self.to_date}"
+        elif self.from_date:
+            filter_info = f"Filtered: on or after {self.from_date}"
+        elif self.to_date:
+            filter_info = f"Filtered: on or before {self.to_date}"
+
         html = (
             '<html><head><meta charset="utf-8"><title>Transactions</title>'
-            # Bootstrap CSS
             '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" '
             'integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">'
-            # DataTables CSS for Bootstrap 5
             '<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>'
-            # Bootstrap Icons
             '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">'
             '</head><body>'
             "<div class='container my-4'>"
             "<h1 class='mb-4'>Transactions</h1>"
+        )
+        if filter_info:
+            html += f"<p class='text-muted'><small>{filter_info}</small></p>"
+        html += (
             "<table id='transactionsTable' class='table table-striped table-hover'>"
             "<thead class='table-dark'><tr>"
             "<th>Date</th><th>Description</th><th>Amount (EUR)</th>"
@@ -69,11 +84,11 @@ class HTMLExporter(BaseExporter):
             "</tr></thead><tbody>"
         )
         for t in self.transactions:
-            tr_class=""
+            tr_class = ""
             if t.amount is None:
                 amount_html = f'<span class="text-danger"> No Value defined! </span>'
                 icon = '<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>'
-                tr_class="table-warning" 
+                tr_class = "table-warning" 
             elif t.amount < 0:
                 amount_html = f'<span class="text-danger">{t.amount}</span>'
                 icon = '<i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>'
@@ -94,11 +109,9 @@ class HTMLExporter(BaseExporter):
             )
         html += (
             "</tbody></table></div>"
-            # jQuery und DataTables JS einbinden
             '<script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>'
             '<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>'
             '<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>'
-            # DataTables initialisieren
             '<script>'
             '$(document).ready(function() {'
             '  $("#transactionsTable").DataTable({'

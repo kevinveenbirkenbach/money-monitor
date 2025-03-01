@@ -6,13 +6,16 @@ from .extractor_consorsbank import PDFConsorsbankExtractor
 
 class TransactionProcessor:
     """Koordiniert das Einlesen der Dateien (PDF, CSV) aus mehreren Pfaden und den Export der Transaktionen."""
-    def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_formats=None):
+    def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_formats=None, from_date=None, to_date=None):
         self.input_paths = input_paths
         self.output_base = output_base
         self.all_transactions = []
         self.print_transactions = print_transactions
         self.recursive = recursive
         self.export_formats = export_formats or {}
+        # Filterparameter als Strings im Format YYYY-MM-DD
+        self.from_date = from_date
+        self.to_date = to_date
 
     def process(self):
         pdf_csv_files = []
@@ -43,7 +46,20 @@ class TransactionProcessor:
             for transactions in results:
                 self.all_transactions.extend(transactions)
 
-        # (Export-Logik bleibt unverändert – siehe vorherige Implementierung)
+        # Filterung der Transaktionen anhand der Datum-Parameter:
+        if self.from_date or self.to_date:
+            filtered = []
+            for t in self.all_transactions:
+                # t.date ist im Format YYYY-MM-DD, also kann ein einfacher Stringvergleich funktionieren,
+                # sofern die Daten immer korrekt formatiert sind.
+                if self.from_date and t.date < self.from_date:
+                    continue
+                if self.to_date and t.date > self.to_date:
+                    continue
+                filtered.append(t)
+            self.all_transactions = filtered
+
+        # (Export-Logik, wie vorher)
         for fmt, flag in self.export_formats.items():
             if flag:
                 ext = f".{fmt}"
@@ -56,7 +72,8 @@ class TransactionProcessor:
                     exporter.export()
                 elif fmt == "html":
                     from .exporter import HTMLExporter
-                    exporter = HTMLExporter(self.all_transactions, output_file)
+                    # Übergib zusätzlich die Filterinformationen an den HTMLExporter
+                    exporter = HTMLExporter(self.all_transactions, output_file, from_date=self.from_date, to_date=self.to_date)
                     exporter.export()
                 elif fmt == "json":
                     from .exporter import JSONExporter
@@ -74,7 +91,6 @@ class TransactionProcessor:
     def extract_from_file(file_path):
         ext = os.path.splitext(file_path)[1].lower()
         if ext == ".csv":
-            # Prüfe, ob es sich um eine PayPal CSV handelt
             with open(file_path, encoding="utf-8") as f:
                 header = f.readline()
             if "Transaktionscode" in header or "PayPal" in header:
@@ -88,12 +104,10 @@ class TransactionProcessor:
                 text = extract_text(file_path, maxpages=1)
             except Exception:
                 text = ""
-            # Prüfe, ob es sich um einen PayPal PDF-Kontoauszug handelt
             if "PayPal" in text and ("Händlerkonto-ID" in text or "Transaktionsübersicht" in text):
                 from .extractor_paypal_pdf import PayPalPDFExtractor
                 extractor = PayPalPDFExtractor(file_path)
                 return extractor.extract_transactions()
-            # Falls nicht, wähle den Consorsbank- oder Standard-Extractor
             if "Consorsbank" in text or "KONTOAUSZUG" in text:
                 from .extractor_consorsbank import PDFConsorsbankExtractor
                 extractor = PDFConsorsbankExtractor(file_path)
