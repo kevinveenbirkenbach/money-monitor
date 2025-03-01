@@ -43,27 +43,74 @@ class CSVExporter(BaseExporter):
         print(f"CSV file created: {self.output_file}")
 
 class HTMLExporter(BaseExporter):
-    """Exportiert die Transaktionen in eine HTML-Datei."""
+    """Exportiert die Transaktionen in eine HTML-Datei mit filterbarer und sortierbarer Tabelle mittels DataTables."""
     def export(self):
         if not self.transactions:
             print("No transactions found to save.")
             return
+
+        # Bootstrap CSS, DataTables CSS und Bootstrap Icons einbinden
         html = (
             '<html><head><meta charset="utf-8"><title>Transactions</title>'
-            '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous"></head><body>'
-            "<table class='table'><tr><th>Date</th><th>Description</th>"
-            "<th>Amount (EUR)</th><th>Account</th><th>File Path</th><th>Bank</th>"
-            "<th>Transaction Hash</th></tr>"
+            # Bootstrap CSS
+            '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" '
+            'integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">'
+            # DataTables CSS for Bootstrap 5
+            '<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>'
+            # Bootstrap Icons
+            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">'
+            '</head><body>'
+            "<div class='container my-4'>"
+            "<h1 class='mb-4'>Transactions</h1>"
+            "<table id='transactionsTable' class='table table-striped table-hover'>"
+            "<thead class='table-dark'><tr>"
+            "<th>Date</th><th>Description</th><th>Amount (EUR)</th>"
+            "<th>Account</th><th>File Path</th><th>Bank</th><th>Transaction Hash</th>"
+            "</tr></thead><tbody>"
         )
         for t in self.transactions:
+            # Farbcodierung und Icon für Amount
+            if t.amount < 0:
+                amount_html = f'<span class="text-danger">{t.amount}</span>'
+                icon = '<i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>'
+            else:
+                amount_html = f'<span class="text-success">{t.amount}</span>'
+                icon = '<i class="bi bi-arrow-up-circle-fill text-success me-1"></i>'
+            # Dateisymbol vor Dateinamen
+            file_logo = '<i class="bi bi-file-earmark-text me-1"></i>'
+            file_link = f'<a href="{t.file_path}">{file_logo}{os.path.basename(t.file_path)}</a>'
             html += (
-                f"<tr><td>{t.date}</td><td>{t.description}</td><td>{t.amount}</td>"
-                f"<td>{t.account}</td><td><a href=\"{t.file_path}\">{os.path.basename(t.file_path)}</a></td><td>{t.bank}</td><td>{t.hash}</td></tr>"
+                f"<tr>"
+                f"<td>{t.date}</td>"
+                f"<td>{t.description}</td>"
+                f"<td>{icon}{amount_html}</td>"
+                f"<td>{t.account}</td>"
+                f"<td>{file_link}</td>"
+                f"<td>{t.bank}</td>"
+                f"<td>{t.hash}</td>"
+                f"</tr>"
             )
-        html += "</table></body></html>"
+        html += (
+            "</tbody></table></div>"
+            # jQuery und DataTables JS einbinden
+            '<script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>'
+            '<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>'
+            '<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>'
+            # DataTables initialisieren
+            '<script>'
+            '$(document).ready(function() {'
+            '  $("#transactionsTable").DataTable({'
+            '    "order": [[ 0, "desc" ]],'
+            '    "pageLength": 25'
+            '  });'
+            '});'
+            '</script>'
+            "</body></html>"
+        )
         with open(self.output_file, "w", encoding="utf-8") as f:
             f.write(html)
         print(f"HTML file created: {self.output_file}")
+
 
 class JSONExporter(BaseExporter):
     """Exportiert die Transaktionen in eine JSON-Datei."""
