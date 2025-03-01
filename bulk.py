@@ -15,6 +15,9 @@ def main():
                         help="Start date filter in YYYY-MM-DD format (only include transactions on or after this date)")
     parser.add_argument("--to", dest="to_date", type=str, default="",
                         help="End date filter in YYYY-MM-DD format (only include transactions on or before this date)")
+    # Neuer Parameter, um die Befehle auszugeben
+    parser.add_argument("--print-cmd", action="store_true",
+                        help="Print the CMD commands instead of (or in addition to) executing them.")
     args = parser.parse_args()
 
     base_dir = args.base_dir
@@ -30,6 +33,9 @@ def main():
         if args.to_date:
             cmd.extend(["--to", args.to_date])
         cmd.extend(["--create-dir"])
+        # Falls der Flag gesetzt ist, gebe den Befehl aus:
+        if args.print_cmd:
+            print("CMD:", " ".join(cmd))
         subprocess.run(cmd)
 
     # Now process all banks together for a combined export
@@ -42,6 +48,8 @@ def main():
         cmd.extend(["--from", args.from_date])
     if args.to_date:
         cmd.extend(["--to", args.to_date])
+    if args.print_cmd:
+        print("CMD:", " ".join(cmd))
     subprocess.run(cmd)
 
 if __name__ == "__main__":
