@@ -22,13 +22,14 @@ def main():
     # Process each bank individually
     for bank in banks:
         input_path = os.path.join(base_dir, bank, "Bank Statements")
-        output_file = os.path.join(base_dir, bank, "transactions")  # base output name without extension
+        output_file = os.path.join(base_dir, bank, "Transactions/transactions")  # base output name without extension
         print(f"Processing {bank} from {input_path} ...")
         cmd = ["python", "main.py", "-r", input_path, output_file, "--csv", "--html"]
         if args.from_date:
             cmd.extend(["--from", args.from_date])
         if args.to_date:
             cmd.extend(["--to", args.to_date])
+        cmd.extend(["--create-dir"])
         subprocess.run(cmd)
 
     # Now process all banks together for a combined export

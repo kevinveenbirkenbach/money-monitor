@@ -7,16 +7,16 @@ from .extractor_dkb_csv import DKBCSVExtractor
 
 class TransactionProcessor:
     """Koordiniert das Einlesen der Dateien (PDF, CSV) aus mehreren Pfaden und den Export der Transaktionen."""
-    def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_formats=None, from_date=None, to_date=None):
+    def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_formats=None, from_date=None, to_date=None, create_dirs=False):
         self.input_paths = input_paths
         self.output_base = output_base
         self.all_transactions = []
         self.print_transactions = print_transactions
         self.recursive = recursive
         self.export_formats = export_formats or {}
-        # Filterparameter als Strings im Format YYYY-MM-DD
         self.from_date = from_date
         self.to_date = to_date
+        self.create_dirs = create_dirs
 
     def process(self):
         pdf_csv_files = []
@@ -67,6 +67,8 @@ class TransactionProcessor:
                 output_file = self.output_base
                 if not output_file.endswith(ext):
                     output_file += ext
+                if self.create_dirs:
+                    os.makedirs(os.path.dirname(output_file), exist_ok=True)
                 if fmt == "csv":
                     from .exporter import CSVExporter
                     exporter = CSVExporter(self.all_transactions, output_file)

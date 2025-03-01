@@ -13,7 +13,6 @@ def main():
                         help="Base path to save the output file(s). The appropriate extension will be appended if missing.")
     parser.add_argument("--console", action="store_true", 
                         help="Print all transactions to the console.")
-    # Exportformate
     parser.add_argument("--csv", action="store_true", 
                         help="Export transactions to CSV.")
     parser.add_argument("--html", action="store_true", 
@@ -24,11 +23,12 @@ def main():
                         help="Export transactions to YAML.")
     parser.add_argument("-r", "--recursive", action="store_true", 
                         help="Recursively search for PDF files in subdirectories.")
-    # Neue Filterparameter
     parser.add_argument("--from", dest="from_date", type=str,
                         help="Only include transactions on or after this date (YYYY-MM-DD).")
     parser.add_argument("--to", dest="to_date", type=str,
                         help="Only include transactions on or before this date (YYYY-MM-DD).")
+    parser.add_argument("--create-dirs", action="store_true",
+                        help="Create parent directories for the output base if they do not exist.")
     args = parser.parse_args()
 
     export_formats = {
@@ -45,7 +45,8 @@ def main():
         recursive=args.recursive,
         export_formats=export_formats,
         from_date=args.from_date,
-        to_date=args.to_date
+        to_date=args.to_date,
+        create_dirs=args.create_dirs
     )
     processor.process()
 
