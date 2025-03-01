@@ -1,6 +1,6 @@
 #!/bin/bash
 # Array mit den Banknamen, hier wird vorausgesetzt, dass der Ordner "Bank Statements" in jedem Verzeichnis liegt.
-banks=("Barclays Bank Ireland PLC" "ING-DiBa AG" "Consorsbank")
+banks=("Barclays Bank Ireland PLC" "ING-DiBa AG" "Consorsbank" "Paypal")
 base_dir="/home/$USER/Documents/institutions/Financial Institutes"
 
 # Für jede Bank wird zuerst ein eigener Export erstellt...
