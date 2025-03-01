@@ -11,19 +11,14 @@ class PayPalCSVExtractor:
     def extract_transactions(self):
         with open(self.csv_path, newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=',')
-            # Wir erwarten, dass der Header mindestens "Datum" und "Transaktionscode" enthält.
             headers = reader.fieldnames
             if not headers or "Transaktionscode" not in headers:
                 return []  # kein PayPal-CSV-Format
             for row in reader:
-                # Datum: Wir gehen davon aus, dass es im Format DD.MM.YYYY vorliegt
-                date_str = row.get("Datum", "").strip()
-                try:
-                    iso_date = datetime.strptime(date_str, "%d.%m.%Y").strftime("%Y-%m-%d")
-                except Exception:
-                    iso_date = date_str
+                iso_date = datetime.strptime(row.get('\ufeff"Datum"', ""), "%d.%m.%Y").strftime("%Y-%m-%d").strip()
                 # Beschreibung: Kombiniere z.B. Typ, Name und E-Mail-Adresse
                 description = " ".join([
+                    row.get("Beschreibung", "").strip(),
                     row.get("Typ", "").strip(),
                     row.get("Name", "").strip(),
                     row.get("E-Mail-Adresse", "").strip()
@@ -34,17 +29,12 @@ class PayPalCSVExtractor:
                     amount = float(amount_str)
                 except Exception:
                     amount = 0.0
-                # Account: Falls vorhanden (z. B. PayPal-ID)
                 account = row.get("PayPal-ID", "").strip()
-                # Als File-Pfad speichern wir den CSV-Pfad
                 file_path = self.csv_path
-                # Bank wird auf "PayPal" gesetzt
                 bank = "PayPal"
-                # Transaktionscode als Hash übernehmen
                 transaction_code = row.get("Transaktionscode", "").strip()
                 transaction = Transaction(iso_date, description, amount, account, file_path, bank)
-                # Überschreibe den automatisch generierten Hash mit dem PayPal Transaktionscode,
-                # sofern vorhanden.
+                # Setze den Transaktionscode als Hash, falls vorhanden.
                 if transaction_code:
                     transaction.hash = transaction_code
                 self.transactions.append(transaction)
