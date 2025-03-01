@@ -6,22 +6,30 @@ from .extractor_consorsbank import PDFConsorsbankExtractor
 from .exporter import CSVExporter
 
 class TransactionProcessor:
-    """Koordiniert das Einlesen der PDFs und den Export der Transaktionen."""
-    def __init__(self, input_path, output_csv, print_transactions=False):
-        self.input_path = input_path
+    """Koordiniert das Einlesen der PDFs aus mehreren Pfaden und den Export der Transaktionen."""
+    def __init__(self, input_paths, output_csv, print_transactions=False):
+        # input_paths ist nun eine Liste von Pfaden (Dateien oder Verzeichnisse)
+        self.input_paths = input_paths
         self.output_csv = output_csv
         self.all_transactions = []
         self.print_transactions = print_transactions
 
     def process(self):
         pdf_files = []
-        if os.path.isdir(self.input_path):
-            pdf_files = [os.path.join(self.input_path, file_name)
-                         for file_name in os.listdir(self.input_path) if file_name.endswith(".pdf")]
-        elif os.path.isfile(self.input_path) and self.input_path.endswith(".pdf"):
-            pdf_files = [self.input_path]
-        else:
-            print("Invalid input path. Please provide a valid PDF file or directory.")
+        # Iteriere über alle übergebenen Pfade
+        for path in self.input_paths:
+            if os.path.isdir(path):
+                pdf_files.extend(
+                    [os.path.join(path, file_name)
+                     for file_name in os.listdir(path) if file_name.endswith(".pdf")]
+                )
+            elif os.path.isfile(path) and path.endswith(".pdf"):
+                pdf_files.append(path)
+            else:
+                print(f"Invalid input path: {path}")
+
+        if not pdf_files:
+            print("No PDF files found in the given paths.")
             return
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
