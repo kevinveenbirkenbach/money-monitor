@@ -24,3 +24,11 @@ class Transaction:
 
     def to_list(self):
         return [self.date, self.description, self.amount, self.sender, self.currency, self.invoice, self.to, self.file_path, self.bank, self.id]
+    
+    def __str__(self):
+        return (
+            f"Transaction(ID: {self.id}, Date: {self.date}, Description: {self.description}, "
+            f"Amount: {self.amount}, Sender: {self.sender}, Currency: {self.currency}, "
+            f"Invoice: {self.invoice}, To: {self.to}, File Path: {self.file_path}, Bank: {self.bank})"
+        )
+

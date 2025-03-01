@@ -109,11 +109,12 @@ class TransactionProcessor:
             content = " ".join(lines)
             if "Transaktionscode" in content or "PayPal" in content:
                 from .extractor_paypal_csv import PayPalCSVExtractor
-                extractor = PayPalCSVExtractor(file_path)
+                extractor = PayPalCSVExtractor(file_path)  # you may update PayPalCSVExtractor similarly if needed
                 return extractor.extract_transactions()
             elif "Buchungsdatum" in content:
                 from .extractor_dkb_csv import DKBCSVExtractor
-                extractor = DKBCSVExtractor(file_path)
+                # Pass the debug flag if needed. You might decide to pass a global flag here.
+                extractor = DKBCSVExtractor(file_path, debug=True)
                 return extractor.extract_transactions()
             else:
                 return []
@@ -124,14 +125,14 @@ class TransactionProcessor:
                 text = ""
             if "PayPal" in text and ("Händlerkonto-ID" in text or "Transaktionsübersicht" in text):
                 from .extractor_paypal_pdf import PayPalPDFExtractor
-                extractor = PayPalPDFExtractor(file_path)
+                extractor = PayPalPDFExtractor(file_path)  # Update similarly if needed
                 return extractor.extract_transactions()
             if "Consorsbank" in text or "KONTOAUSZUG" in text:
                 from .extractor_consorsbank import PDFConsorsbankExtractor
-                extractor = PDFConsorsbankExtractor(file_path)
+                extractor = PDFConsorsbankExtractor(file_path, debug=True)
             else:
                 from .extractor import PDFTransactionExtractor
-                extractor = PDFTransactionExtractor(file_path)
+                extractor = PDFTransactionExtractor(file_path, debug=True)
             return extractor.extract_transactions()
         else:
             return []

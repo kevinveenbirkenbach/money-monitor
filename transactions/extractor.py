@@ -3,19 +3,16 @@ from datetime import datetime
 import pdfplumber
 from .transaction import Transaction
 
-# transactions/extractor.py
-import re
-from datetime import datetime
-import pdfplumber
-from .transaction import Transaction
-
 class PDFTransactionExtractor:
-    """Extrahiert Transaktionen aus einem PDF-Bankauszug (für ING und Barclays)."""
-    def __init__(self, pdf_path):
+    """
+    Extracts transactions from a PDF bank statement (for ING and Barclays).
+    """
+    def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
         self.transactions = []
         self.account = ""
         self.bank_type = "Unknown"
+        self.debug = debug
 
     def detect_bank_type(self, text):
         if not text:
@@ -32,10 +29,10 @@ class PDFTransactionExtractor:
             amount_value = float(amount_str)
             return Transaction(iso_date, description, amount_value, sender, self.pdf_path, self.bank_type, currency, invoice, to_field)
         except Exception as e:
-            print(f"Error converting amount '{amount_str}' in {iso_date}. "
-                  f"Description: '{description}', From: '{sender}', File: '{self.pdf_path}', Bank: '{self.bank_type}', "
-                  f"Currency: '{currency}', Invoice: '{invoice}', To: '{to_field}'. Exception: {e}")
-
+            if self.debug:
+                print(f"[DEBUG] create_transaction: Error converting amount '{amount_str}' in {iso_date} for file {self.pdf_path}.")
+                print(f"Description: '{description}', Sender: '{sender}', Bank: '{self.bank_type}', Currency: '{currency}', Invoice: '{invoice}', To: '{to_field}'. Exception: {e}")
+            return None
 
     def extract_transactions(self):
         with pdfplumber.open(self.pdf_path) as pdf:
@@ -59,7 +56,12 @@ class PDFTransactionExtractor:
                             date = match.group(1)
                             description = match.group(2).strip()
                             amount = match.group(3).replace(".", "").replace(",", ".")
-                            iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
+                            try:
+                                iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
+                            except Exception as e:
+                                if self.debug:
+                                    print(f"[DEBUG] extract_transactions (ING): Date conversion error for '{date}' in file {self.pdf_path}: {e}")
+                                iso_date = date
                             sender = self.account
                             currency = "EUR"
                             invoice = ""
@@ -81,24 +83,31 @@ class PDFTransactionExtractor:
                             date = match.group(1)
                             description = match.group(2).strip()
                             num_str = match.group(3)
-                            sign = match.group(4)  # Kann "-", "+", oder None sein.
+                            sign = match.group(4)  # Could be "-", "+", or None.
                             
                             if sign is None and num_str and num_str[-1] in "-+":
                                 sign = num_str[-1]
                                 num_str = num_str[:-1].strip()
                             
-                            value = float(num_str.replace(".", "").replace(",", "."))
-
+                            try:
+                                value = float(num_str.replace(".", "").replace(",", "."))
+                            except Exception as e:
+                                if self.debug:
+                                    print(f"[DEBUG] extract_transactions (Barclays): Error converting number string '{num_str}' in file {self.pdf_path}: {e}")
+                                value = 0.0
                             if sign == "-":
                                 value = -value
-                            iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                            # Bei ING nehmen wir die IBAN als "sender" und setzen currency beispielsweise auf "EUR"
+                            try:
+                                iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
+                            except Exception as e:
+                                if self.debug:
+                                    print(f"[DEBUG] extract_transactions (Barclays): Date conversion error for '{date}' in file {self.pdf_path}: {e}")
+                                iso_date = date
                             sender = self.account
                             currency = "EUR"
                             invoice = ""
                             to_field = ""
-
-                            transaction = self.create_transaction(iso_date, description, value, sender, currency, invoice, to_field)
+                            transaction = self.create_transaction(iso_date, description, str(value), sender, currency, invoice, to_field)
                             if transaction:
                                 self.transactions.append(transaction)
         return self.transactions

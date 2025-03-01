@@ -5,10 +5,11 @@ from .transaction import Transaction
 
 class PDFConsorsbankExtractor:
     """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
-    def __init__(self, pdf_path):
+    def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
         self.transactions = []
         self.previous_balance = None
+        self.debug=debug
 
     @staticmethod
     def parse_amount(s):
@@ -19,7 +20,7 @@ class PDFConsorsbankExtractor:
             sign = 1
         elif s.endswith('-'):
             sign = -1
-        s = s[:-1].strip()  # Entferne das Vorzeichenzeichen
+        s = s[:-1].strip()
         s = s.replace('.', '').replace(',', '.')
         try:
             return sign * float(s)
@@ -119,6 +120,8 @@ class PDFConsorsbankExtractor:
             full_description = f"{trans_type}: {description}"
             transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank", currency="", invoice="", to="")
             self.transactions.append(transaction)
+            if self.debug:
+                print(f"[DEBUG] Transaction {transaction} appended.")
             if current_balance is not None:
                 self.previous_balance = current_balance
         return self.transactions

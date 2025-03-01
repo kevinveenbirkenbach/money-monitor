@@ -13,9 +13,10 @@ class DKBCSVExtractor:
       "Zahlungsempfänger*in";"Verwendungszweck";"Umsatztyp";"IBAN";
       "Betrag (€)";"Gläubiger-ID";"Mandatsreferenz";"Kundenreferenz"
     """
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, debug=False):
         self.csv_path = csv_path
         self.transactions = []
+        self.debug = debug
 
     def parse_date(self, date_str):
         date_str = date_str.strip().replace('"', '')
@@ -23,22 +24,14 @@ class DKBCSVExtractor:
             try:
                 dt = datetime.strptime(date_str, fmt)
                 return dt.strftime("%Y-%m-%d")
-            except Exception:
+            except Exception as e:
                 continue
-        # If no format matches, print an error message
-        print(f"Error: Date string '{date_str}' does not match expected formats (%d.%m.%Y or %d.%m.%y).")
+        print(f"Error: Date string '{date_str}' does not match expected formats (%d.%m.%Y or %d.%m.%y) in file {self.csv_path}.")
         return date_str
 
     def parse_amount(self, amount_str):
-        """
-        Parses the amount string.
-        In DKB CSV files, the amount is given in the format "7.595,06 +" or "-45,66" etc.
-        The trailing '+' or '-' indicates whether the amount is to be added or subtracted.
-        This function removes any spaces, replaces commas with dots,
-        and converts the result to a float (applying a negative sign if necessary).
-        """
         amount_str = amount_str.strip().replace('"', '')
-        # Remove any non-breaking spaces or extra spaces
+        # Remove non-breaking spaces and extra spaces
         amount_str = amount_str.replace("\u00A0", "").replace(" ", "")
         sign = 1
         if amount_str.endswith('+'):
@@ -47,16 +40,13 @@ class DKBCSVExtractor:
         elif amount_str.endswith('-'):
             amount_str = amount_str[:-1].strip()
             sign = -1
-        
         try:
             value = float(amount_str.replace(".", "").replace(",", "."))
             return sign * value
         except Exception as e:
-            print(f"Exception: {e}")
+            if self.debug:
+                print(f"[DEBUG] parse_amount: Could not convert '{amount_str}' in file {self.csv_path}: {e}")
             return 0.0
-
-
-# ... (Importe und Docstring bleiben unverändert)
 
     def extract_transactions(self):
         with open(self.csv_path, newline='', encoding='utf-8') as f:
@@ -70,7 +60,7 @@ class DKBCSVExtractor:
                 break
         
         if header_row_index is None:
-            print("No header row found. This may not be a valid DKB CSV file.")
+            print(f"No header row found in {self.csv_path}. This may not be a valid DKB CSV file.")
             return []
         
         headers = [h.strip().replace('"', '') for h in rows[header_row_index]]
@@ -83,10 +73,10 @@ class DKBCSVExtractor:
             booking_date = self.parse_date(data.get("Buchungsdatum", ""))
             description = data.get("Verwendungszweck", "").strip()
             amount = self.parse_amount(data.get("Betrag (€)", "0"))
-            # Anstatt Account wird nun From verwendet
+            # Instead of account, we now use sender
             sender = data.get("IBAN", "").strip()
-            # Neue Felder:
-            currency = "EUR"  # Standardwert
+            # New fields
+            currency = "EUR"  # default value
             invoice = data.get("Kundenreferenz", "").strip() if "Kundenreferenz" in data else ""
             to_field = data.get("Zahlungsempfänger*in", "").strip() if "Zahlungsempfänger*in" in data else ""
             file_path = self.csv_path
@@ -95,4 +85,3 @@ class DKBCSVExtractor:
             transaction = Transaction(booking_date, description, amount, sender, file_path, bank, currency, invoice, to_field)
             self.transactions.append(transaction)
         return self.transactions
-
