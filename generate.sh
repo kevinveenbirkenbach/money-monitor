@@ -9,7 +9,7 @@ for bank in "${banks[@]}"; do
   output_file="${base_dir}/${bank}/transactions"  # Basisname, ohne Suffix
   echo "Verarbeite ${bank} aus ${input_path} ..."
   # Exportiere rekursiv in CSV
-  python main.py -r "$input_path" "$output_file" --csv
+  python main.py -r "$input_path" "$output_file" --csv --html
 done
 
 # Anschließend kannst du alle Pfade zusammenfassen und z. B. einen kombinierten JSON-Export erstellen:

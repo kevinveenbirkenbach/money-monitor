@@ -18,12 +18,12 @@ class PDFTransactionExtractor:
         self.bank_type = "Unknown"
 
     def detect_bank_type(self, text):
-        """Ermittelt den Banktyp anhand des Textinhalts."""
-        if text is None:
+        if not text:
             return "Unknown"
-        if "ING-DiBa" in text or "IBAN" in text:
+        lower_text = text.lower()
+        if "ing-diba" in lower_text or "INGDDEFFXXX".lower() in lower_text:
             return "ING"
-        elif "Barclaycard" in text or "BARCDEHAXXX" in text:
+        elif "barclaycard" in lower_text or "barcdehaxx" in lower_text:
             return "Barclays"
         return "Unknown"
 
@@ -58,12 +58,27 @@ class PDFTransactionExtractor:
                     if iban_match:
                         self.account = iban_match.group(1).replace(" ", "")
                     for line in lines:
-                        match = re.match(r"(\d{2}\.\d{2}\.\d{4})\s+(.*?)\s+Visa\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?)", line)
+                        match = re.match(
+                            r"(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*([-+])?",
+                            line
+                        )
                         if match:
                             date = match.group(1)
                             description = match.group(2).strip()
-                            amount = match.group(3).replace(".", "").replace(",", ".")
+                            num_str = match.group(3)
+                            sign = match.group(4)  # Kann "-", "+", oder None sein.
+                            # Falls das Vorzeichen nicht erfasst wurde, aber der Betrag selbst damit endet:
+                            if sign is None and num_str and num_str[-1] in "-+":
+                                sign = num_str[-1]
+                                num_str = num_str[:-1].strip()
+                            # Umwandlung: Ersetze Punkte, ersetze Komma durch Punkt, dann float
+                            try:
+                                value = float(num_str.replace(".", "").replace(",", "."))
+                            except Exception:
+                                value = 0.0
+                            if sign == "-":
+                                value = -value
                             iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                            transaction = Transaction(iso_date, description, float(amount), self.account, self.pdf_path, bank=self.bank_type)
+                            transaction = Transaction(iso_date, description, value, self.account, self.pdf_path, bank=self.bank_type)
                             self.transactions.append(transaction)
         return self.transactions
