@@ -54,7 +54,7 @@ class PDFTransactionExtractor:
                             transaction = Transaction(iso_date, description, float(amount), self.account, self.pdf_path, bank=self.bank_type)
                             self.transactions.append(transaction)
                 elif self.bank_type == "Barclays":
-                    iban_match = re.search(r"IBAN\s+(DE\d{2}\s\d{4}\s\d{4}\s\d{4}\s\d{2})", text)
+                    iban_match = re.search(r"(?:IBAN\s+)?(DE\d{2}(?:\s+\d{4}){3}\s+\d{2})", text)
                     if iban_match:
                         self.account = iban_match.group(1).replace(" ", "")
                     for line in lines:
