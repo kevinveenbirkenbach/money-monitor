@@ -4,7 +4,7 @@ import pdfplumber
 from .transaction import Transaction
 
 class PDFTransactionExtractor:
-    """Extrahiert Transaktionen aus einem PDF-Bankauszug."""
+    """Extrahiert Transaktionen aus einem PDF-Bankauszug (für ING und Barclays)."""
     def __init__(self, pdf_path):
         self.pdf_path = pdf_path
         self.transactions = []
