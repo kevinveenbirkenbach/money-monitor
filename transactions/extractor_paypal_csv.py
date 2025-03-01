@@ -20,9 +20,7 @@ class PayPalCSVExtractor:
                 iso_date = datetime.strptime(row.get('\ufeff"Datum"', ""), "%d.%m.%Y").strftime("%Y-%m-%d").strip()
                 description = " ".join([
                     row.get("Beschreibung", "").strip(),
-                    row.get("Typ", "").strip(),
-                    row.get("Name", "").strip(),
-                    row.get("E-Mail-Adresse", "").strip()
+                    row.get("Typ", "").strip()
                 ]).strip()
                 amount_str = row.get("Netto", "").replace(",", ".").strip()
                 try:
@@ -34,7 +32,7 @@ class PayPalCSVExtractor:
                 # Neue Felder; hier beispielhaft aus optionalen Spalten (falls vorhanden)
                 currency = row.get("Währung", "").strip() if "Währung" in row else ""
                 invoice = row.get("Rechnungsnummer", "").strip() if "Rechnungsnummer" in row else ""
-                to_field = row.get("Empfänger", "").strip() if "Empfänger" in row else ""
+                to_field = row.get("Name", "").strip()
                 file_path = self.csv_path
                 bank = "PayPal"
                 transaction_code = row.get("Transaktionscode", "").strip()
