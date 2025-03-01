@@ -55,51 +55,37 @@ class PDFConsorsbankExtractor:
         return datum_str
 
     def extract_transactions(self):
-        """Extrahiert Transaktionen aus dem Consorsbank-PDF."""
         text = extract_text(self.pdf_path)
-        
-        # Globales Jahr ermitteln (z. B. aus "29.04.22")
         global_year = None
         year_match = re.search(r'\b\d{2}\.\d{2}\.(\d{2,4})\b', text)
         if year_match:
             year_str = year_match.group(1)
-            if len(year_str) == 2:
-                global_year = "20" + year_str
-            else:
-                global_year = year_str
-        else:
-            global_year = "2022"  # Fallback
-
+            global_year = "20" + year_str if len(year_str) == 2 else year_str
         block_pattern = re.compile(
             r'^(?P<type>LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n'
             r'(?P<block>.*?)(?=^(?:LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n|\Z)',
             re.DOTALL | re.MULTILINE
         )
-
         detail_pattern = re.compile(
             r'(?P<datum>\d{2}\.\d{2}\.)\s+(?P<pnnr>\d{3,4})\s*\n\s*'
             r'(?P<wert>\d{2}\.\d{2}\.)\s*\n\s*'
             r'(?P<amount>[\d.,]+[+-])',
             re.MULTILINE
         )
-
         balance_pattern = re.compile(
             r'\*\*\*\s*Kontostand zum [^\d]*\s*(?P<balance>[\d.,]+[+-])'
         )
-
         for m_block in block_pattern.finditer(text):
             trans_type = m_block.group('type').strip()
             block = m_block.group('block')
-            
             if trans_type in {"LASTSCHRIFT", "EURO-UEBERW."}:
                 detail_match = detail_pattern.search(block)
                 if not detail_match:
                     continue
                 datum_raw = detail_match.group('datum').strip()
-                # Wir ignorieren PNNr
                 wert_raw = detail_match.group('wert').strip()
                 amount_extracted = detail_match.group('amount').strip()
-            else:  # GUTSCHRIFT
+            else:
                 lines = [line.strip() for line in block.splitlines() if line.strip()]
                 datum_raw, wert_raw = "", ""
                 for idx, line in enumerate(lines):
@@ -112,39 +98,29 @@ class PDFConsorsbankExtractor:
                                 wert_raw = m_date2.group(1)
                         break
                 amount_extracted = ""
-            
             datum_iso = self.convert_to_iso(datum_raw, global_year) if datum_raw else ""
-            
             current_balance = None
             balance_match = balance_pattern.search(block)
             if balance_match:
                 current_balance = self.parse_amount(balance_match.group('balance'))
-            
             if trans_type == "GUTSCHRIFT" and (amount_extracted == "" or self.parse_amount(amount_extracted) is None):
                 if self.previous_balance is not None and current_balance is not None:
                     diff = current_balance - self.previous_balance
                     amount_extracted = self.format_amount(diff)
                 else:
                     amount_extracted = ""
-            
-            # Beschreibung: Alles vor Detaildaten (falls vorhanden) oder gesamter Block
             if trans_type in {"LASTSCHRIFT", "EURO-UEBERW."} and detail_pattern.search(block):
                 description = block[:detail_pattern.search(block).start()].strip().replace('\n', ' ')
             else:
                 description = block.strip().replace('\n', ' ')
-            
-            # Erstelle einen Transaction-Eintrag; Account ist hier nicht definiert.
             try:
                 amount_val = self.parse_amount(amount_extracted)
             except Exception:
                 amount_val = 0.0
-
-            # Um Mehrdeutigkeiten zu vermeiden, können wir den Transaktionstyp in die Beschreibung integrieren.
             full_description = f"{trans_type}: {description}"
-            transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path)
+            # Hier wird "Consorsbank" als Bank übergeben.
+            transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank")
             self.transactions.append(transaction)
-            
             if current_balance is not None:
                 self.previous_balance = current_balance
-
         return self.transactions

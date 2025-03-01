@@ -17,4 +17,4 @@ input_paths=()
 for bank in "${banks[@]}"; do
   input_paths+=("${base_dir}/${bank}/Bank Statements/")
 done
-python main.py -r "${input_paths[@]}" "${base_dir}/transactions" --csv
+python main.py -r "${input_paths[@]}" "${base_dir}/transactions" --csv --html
