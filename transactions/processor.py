@@ -3,6 +3,7 @@ import concurrent.futures
 from pdfminer.high_level import extract_text
 from .extractor import PDFTransactionExtractor
 from .extractor_consorsbank import PDFConsorsbankExtractor
+from .extractor_dkb_csv import DKBCSVExtractor
 
 class TransactionProcessor:
     """Koordiniert das Einlesen der Dateien (PDF, CSV) aus mehreren Pfaden und den Export der Transaktionen."""
@@ -96,6 +97,10 @@ class TransactionProcessor:
             if "Transaktionscode" in header or "PayPal" in header:
                 from .extractor_paypal_csv import PayPalCSVExtractor
                 extractor = PayPalCSVExtractor(file_path)
+                return extractor.extract_transactions()
+            if "Buchungsdatum" in header:
+                from .extractor_dkb_csv import DKBCSVExtractor
+                extractor = DKBCSVExtractor(file_path)
                 return extractor.extract_transactions()
             else:
                 return []  # Unbekanntes CSV-Format
