@@ -4,8 +4,8 @@ from pdfminer.high_level import extract_text
 from .transaction import Transaction
 from .logger import Logger
 
+
 class PDFConsorsbankExtractor:
-    """Extracts transactions from a Consorsbank PDF."""
     def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
         self.transactions = []
@@ -26,7 +26,7 @@ class PDFConsorsbankExtractor:
         try:
             return sign * float(s)
         except Exception as e:
-            print(f"\033[91m[ERROR]\033[0m Could not parse amount '{s}': {e}")
+            print(f"[ERROR] Could not parse amount '{s}': {e}")
             return None
 
     @staticmethod

@@ -1,11 +1,9 @@
-# transactions/logger.py
-
 class Logger:
     RESET = "\033[0m"
-    RED = "\033[91m"      # For [ERROR]
-    YELLOW = "\033[93m"   # For [WARNING]
-    BLUE = "\033[94m"     # For [INFO]
-    WHITE = "\033[97m"    # For [DEBUG] text
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    WHITE = "\033[97m"
 
     def __init__(self, debug=False, quiet=False):
         self.debug_enabled = debug

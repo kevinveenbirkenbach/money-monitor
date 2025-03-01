@@ -3,8 +3,8 @@ from datetime import datetime
 from .transaction import Transaction
 from .logger import Logger
 
+
 class PayPalCSVExtractor:
-    """Extracts transactions from a PayPal CSV file, if the format matches."""
     def __init__(self, csv_path, debug=False):
         self.csv_path = csv_path
         self.transactions = []

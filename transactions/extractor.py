@@ -4,10 +4,8 @@ import pdfplumber
 from .transaction import Transaction
 from .logger import Logger
 
+
 class PDFTransactionExtractor:
-    """
-    Extracts transactions from a PDF bank statement (for ING and Barclays).
-    """
     def __init__(self, pdf_path, debug=False):
         self.pdf_path = pdf_path
         self.transactions = []
@@ -32,8 +30,7 @@ class PDFTransactionExtractor:
             return Transaction(iso_date, description, amount_value, sender, self.pdf_path, self.bank_type, currency, invoice, to_field)
         except Exception as e:
             self.logger.error(f"Error converting amount '{amount_str}' in {iso_date} for file {self.pdf_path}.")
-            self.logger.debug(f"Description: '{description}', Sender: '{sender}', Bank: '{self.bank_type}', "
-                               f"Currency: '{currency}', Invoice: '{invoice}', To: '{to_field}'. Exception: {e}")
+            self.logger.debug(f"Description: '{description}', Sender: '{sender}', Bank: '{self.bank_type}', Currency: '{currency}', Invoice: '{invoice}', To: '{to_field}'. Exception: {e}")
             return None
 
     def extract_transactions(self):

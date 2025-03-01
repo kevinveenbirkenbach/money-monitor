@@ -6,18 +6,17 @@ try:
 except ImportError:
     yaml = None
 from .logger import Logger
+from jinja2 import Environment, FileSystemLoader
 
 class BaseExporter:
-    """Base class for exporters. It sorts transactions and converts them to a dictionary."""
     def __init__(self, transactions, output_file, debug=False, quiet=False):
         self.transactions = sorted(transactions, key=lambda t: t.date)
         self.output_file = output_file
         self.logger = Logger(debug=debug, quiet=quiet)
 
     def get_data_as_dicts(self):
-        data = []
-        for t in self.transactions:
-            data.append({
+        return [
+            {
                 "id": t.id,
                 "bank": t.bank,
                 "date": t.date,
@@ -28,11 +27,11 @@ class BaseExporter:
                 "description": t.description,
                 "invoice": t.invoice,
                 "file_path": t.file_path
-            })
-        return data
+            }
+            for t in self.transactions
+        ]
 
 class CSVExporter(BaseExporter):
-    """Exports transactions to a CSV file."""
     def export(self):
         if not self.transactions:
             self.logger.warning("No transactions found to save.")
@@ -47,11 +46,7 @@ class CSVExporter(BaseExporter):
         except Exception as e:
             self.logger.error(f"Error exporting CSV: {e}")
 
-import os
-from jinja2 import Environment, FileSystemLoader
-
 class HTMLExporter(BaseExporter):
-    """Exports transactions to an HTML file using a Jinja2 template."""
     def __init__(self, transactions, output_file, from_date=None, to_date=None, debug=False, quiet=False):
         super().__init__(transactions, output_file, debug=debug, quiet=quiet)
         self.from_date = from_date
