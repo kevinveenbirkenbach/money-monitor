@@ -21,6 +21,13 @@ def main():
                         help="Create parent directories for the output base if they do not exist.")
     parser.add_argument("--export-types", nargs="+", choices=["csv", "html", "json", "yaml"],
                         help="List of export formats (choose one or more from: csv, html, json, yaml)")
+    # New quiet and debug flags
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="Suppress all output (except CMD if --print-cmd is set)")
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="Enable detailed debug output")
+    parser.add_argument("--print-cmd", action="store_true",
+                        help="Print the constructed CMD commands before executing them.")
     args = parser.parse_args()
 
     processor = TransactionProcessor(
@@ -31,7 +38,10 @@ def main():
         export_types=args.export_types or [],
         from_date=args.from_date,
         to_date=args.to_date,
-        create_dirs=args.create_dirs
+        create_dirs=args.create_dirs,
+        quiet=args.quiet,
+        debug=args.debug,
+        print_cmd=args.print_cmd  # Pass the print-cmd flag to processor if needed
     )
     processor.process()
 

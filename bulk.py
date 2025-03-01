@@ -15,9 +15,14 @@ def main():
                         help="Start date filter in YYYY-MM-DD format (only include transactions on or after this date)")
     parser.add_argument("--to", dest="to_date", type=str, default="",
                         help="End date filter in YYYY-MM-DD format (only include transactions on or before this date)")
-    # Neuer Parameter, um die Befehle auszugeben
+    # Flag to print the constructed CMD commands
     parser.add_argument("--print-cmd", action="store_true",
                         help="Print the CMD commands instead of (or in addition to) executing them.")
+    # New quiet and debug flags
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="Suppress all output (except CMD if --print-cmd is set)")
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="Enable detailed debug output")
     args = parser.parse_args()
 
     base_dir = args.base_dir
@@ -26,28 +31,34 @@ def main():
     for bank in banks:
         input_path = os.path.join(base_dir, bank, "Bank Statements")
         output_file = os.path.join(base_dir, bank, "Transactions/transactions")  # base output name without extension
-        print(f"Processing {bank} from {input_path} ...")
+        if not args.quiet:
+            print(f"Processing {bank} from {input_path} ...")
         cmd = ["python", "main.py", "-r", input_path, output_file, "--export-types", "csv", "html"]
         if args.from_date:
             cmd.extend(["--from", args.from_date])
         if args.to_date:
             cmd.extend(["--to", args.to_date])
         cmd.extend(["--create-dir"])
-        # Falls der Flag gesetzt ist, gebe den Befehl aus:
+        if args.quiet:
+            cmd.append("--quiet")
+        if args.debug:
+            cmd.append("--debug")
         if args.print_cmd:
             print("CMD:", " ".join(cmd))
         subprocess.run(cmd)
 
     # Now process all banks together for a combined export
-    combined_input_paths = []
-    for bank in banks:
-        combined_input_paths.append(os.path.join(base_dir, bank, "Bank Statements"))
+    combined_input_paths = [os.path.join(base_dir, bank, "Bank Statements") for bank in banks]
     combined_output = os.path.join(base_dir, "transactions")
     cmd = ["python", "main.py", "-r"] + combined_input_paths + [combined_output, "--export-types", "csv", "html"]
     if args.from_date:
         cmd.extend(["--from", args.from_date])
     if args.to_date:
         cmd.extend(["--to", args.to_date])
+    if args.quiet:
+        cmd.append("--quiet")
+    if args.debug:
+        cmd.append("--debug")
     if args.print_cmd:
         print("CMD:", " ".join(cmd))
     subprocess.run(cmd)
