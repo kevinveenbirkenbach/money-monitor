@@ -27,6 +27,16 @@ class PDFTransactionExtractor:
             return "Barclays"
         return "Unknown"
 
+    def create_transaction(self, iso_date, description, amount_str, sender, currency, invoice, to_field):
+        try:
+            amount_value = float(amount_str)
+            return Transaction(iso_date, description, amount_value, sender, self.pdf_path, self.bank_type, currency, invoice, to_field)
+        except Exception as e:
+            print(f"Error converting amount '{amount_str}' in {iso_date}. "
+                  f"Description: '{description}', From: '{sender}', File: '{self.pdf_path}', Bank: '{self.bank_type}', "
+                  f"Currency: '{currency}', Invoice: '{invoice}', To: '{to_field}'. Exception: {e}")
+
+
     def extract_transactions(self):
         with pdfplumber.open(self.pdf_path) as pdf:
             if not pdf.pages:
@@ -50,9 +60,14 @@ class PDFTransactionExtractor:
                             description = match.group(2).strip()
                             amount = match.group(3).replace(".", "").replace(",", ".")
                             iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                            # Übergabe von self.bank_type als "Bank"
-                            transaction = Transaction(iso_date, description, float(amount), self.account, self.pdf_path, bank=self.bank_type)
-                            self.transactions.append(transaction)
+                            sender = self.account
+                            currency = "EUR"
+                            invoice = ""
+                            to_field = ""
+                            transaction = self.create_transaction(iso_date, description, amount, sender, currency, invoice, to_field)
+                            if transaction:
+                                self.transactions.append(transaction)
+                                
                 elif self.bank_type == "Barclays":
                     iban_match = re.search(r"(?:IBAN\s+)?(DE\d{2}(?:\s+\d{4}){3}\s+\d{2})", text)
                     if iban_match:
@@ -79,6 +94,13 @@ class PDFTransactionExtractor:
                             if sign == "-":
                                 value = -value
                             iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
-                            transaction = Transaction(iso_date, description, value, self.account, self.pdf_path, bank=self.bank_type)
-                            self.transactions.append(transaction)
+                            # Bei ING nehmen wir die IBAN als "sender" und setzen currency beispielsweise auf "EUR"
+                            sender = self.account
+                            currency = "EUR"
+                            invoice = ""
+                            to_field = ""
+
+                            transaction = self.create_transaction(iso_date, description, value, sender, currency, invoice, to_field)
+                            if transaction:
+                                self.transactions.append(transaction)
         return self.transactions

@@ -8,6 +8,8 @@ class PayPalCSVExtractor:
         self.csv_path = csv_path
         self.transactions = []
 
+# ... (Importe und Docstring bleiben unverändert)
+
     def extract_transactions(self):
         with open(self.csv_path, newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=',')
@@ -16,25 +18,27 @@ class PayPalCSVExtractor:
                 return []  # kein PayPal-CSV-Format
             for row in reader:
                 iso_date = datetime.strptime(row.get('\ufeff"Datum"', ""), "%d.%m.%Y").strftime("%Y-%m-%d").strip()
-                # Beschreibung: Kombiniere z.B. Typ, Name und E-Mail-Adresse
                 description = " ".join([
                     row.get("Beschreibung", "").strip(),
                     row.get("Typ", "").strip(),
                     row.get("Name", "").strip(),
                     row.get("E-Mail-Adresse", "").strip()
                 ]).strip()
-                # Betrag: Wir verwenden den Netto-Betrag und ersetzen Komma durch Punkt
                 amount_str = row.get("Netto", "").replace(",", ".").strip()
                 try:
                     amount = float(amount_str)
                 except Exception:
                     amount = 0.0
-                account = row.get("PayPal-ID", "").strip()
+                # Ersetze Account durch From:
+                sender = row.get("PayPal-ID", "").strip()
+                # Neue Felder; hier beispielhaft aus optionalen Spalten (falls vorhanden)
+                currency = row.get("Währung", "").strip() if "Währung" in row else ""
+                invoice = row.get("Rechnungsnummer", "").strip() if "Rechnungsnummer" in row else ""
+                to_field = row.get("Empfänger", "").strip() if "Empfänger" in row else ""
                 file_path = self.csv_path
                 bank = "PayPal"
                 transaction_code = row.get("Transaktionscode", "").strip()
-                transaction = Transaction(iso_date, description, amount, account, file_path, bank)
-                # Setze den Transaktionscode als id, falls vorhanden.
+                transaction = Transaction(iso_date, description, amount, sender, file_path, bank, currency, invoice, to_field)
                 if transaction_code:
                     transaction.id = transaction_code
                 self.transactions.append(transaction)

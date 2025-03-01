@@ -118,8 +118,7 @@ class PDFConsorsbankExtractor:
             except Exception:
                 amount_val = 0.0
             full_description = f"{trans_type}: {description}"
-            # Hier wird "Consorsbank" als Bank übergeben.
-            transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank")
+            transaction = Transaction(datum_iso, full_description, amount_val, "", self.pdf_path, bank="Consorsbank", currency="", invoice="", to="")
             self.transactions.append(transaction)
             if current_balance is not None:
                 self.previous_balance = current_balance

@@ -15,17 +15,19 @@ class BaseExporter:
         self.output_file = output_file
 
     def get_data_as_dicts(self):
-        """Wandelt die Transaktionen in eine Liste von Dictionaries um, inklusive aller Felder."""
         data = []
         for t in self.transactions:
             data.append({
-                "Date": t.date,
-                "Description": t.description,
-                "Amount (EUR)": t.amount,
-                "Account": t.account,
-                "File Path": t.file_path,
-                "Bank": t.bank,
-                "ID": t.id
+                "id": t.id,
+                "bank": t.bank,
+                "date": t.date,
+                "sender": t.sender,
+                "to": t.to,
+                "amount": t.amount,
+                "currency": t.currency,
+                "description": t.description,
+                "invoice": t.invoice,
+                "file_path": t.file_path
             })
         return data
 
@@ -37,9 +39,10 @@ class CSVExporter(BaseExporter):
             return
         with open(self.output_file, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(["Date", "Description", "Amount (EUR)", "Account", "File Path", "Bank", "ID"])
+            writer.writerow(["Date", "Description", "Amount (EUR)", "From", "File Path", "Bank", "ID"])
             for t in self.transactions:
-                writer.writerow([t.date, t.description, t.amount, t.account, t.file_path, t.bank, t.id])
+                writer.writerow([t.date, t.description, t.amount, t.sender, t.file_path, t.bank, t.id])
+
         print(f"CSV file created: {self.output_file}")
 
 import os
@@ -66,20 +69,8 @@ class HTMLExporter(BaseExporter):
         elif self.to_date:
             filter_info = f"Filtered: on or before {self.to_date}"
 
-        # Prepare data for template: add file_name field to each transaction
-        transactions_data = []
         for t in self.transactions:
-            d = {
-                "date": t.date,
-                "description": t.description,
-                "amount": t.amount,
-                "account": t.account,
-                "file_path": t.file_path,
-                "file_name": os.path.basename(t.file_path),
-                "bank": t.bank,
-                "id": t.id
-            }
-            transactions_data.append(d)
+            t.file_name = os.path.basename(t.file_path)
 
         # Set up Jinja2 environment and load the template
         env = Environment(loader=FileSystemLoader(searchpath="./templates"))
@@ -87,7 +78,7 @@ class HTMLExporter(BaseExporter):
 
         rendered_html = template.render(
             filter_info=filter_info,
-            transactions=transactions_data
+            transactions=self.transactions
         )
 
         with open(self.output_file, "w", encoding="utf-8") as f:

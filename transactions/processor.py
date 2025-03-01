@@ -127,4 +127,4 @@ class TransactionProcessor:
     def console_output(self):
         print("\nAlle Transaktionen:")
         for t in self.all_transactions:
-            print(f"{t.date}\t{t.description}\t{t.amount}\t{t.account}\t{t.file_path}\t{t.bank}\t{t.id}")
+            print(f"{t.date}\t{t.description}\t{t.amount}\t{t.sender}\t{t.file_path}\t{t.bank}\t{t.id}")

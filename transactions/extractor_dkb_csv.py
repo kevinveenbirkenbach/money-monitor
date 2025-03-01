@@ -56,13 +56,14 @@ class DKBCSVExtractor:
         except Exception:
             return 0.0
 
+# ... (Importe und Docstring bleiben unverändert)
+
     def extract_transactions(self):
         with open(self.csv_path, newline='', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=';')
             rows = list(reader)
         
         header_row_index = None
-        # Find header row by looking for "Buchungsdatum"
         for i, row in enumerate(rows):
             if row and row[0].strip().replace('"', '').lower() == "buchungsdatum":
                 header_row_index = i
@@ -72,31 +73,26 @@ class DKBCSVExtractor:
             print("No header row found. This may not be a valid DKB CSV file.")
             return []
         
-        # Read header row and normalize field names
         headers = [h.strip().replace('"', '') for h in rows[header_row_index]]
-        
-        # Process all rows after the header row
         data_rows = rows[header_row_index+1:]
         for row in data_rows:
-            # Skip empty rows
             if not any(field.strip() for field in row):
                 continue
             
-            # Map the row fields to a dictionary using the header
             data = dict(zip(headers, row))
-            
-            # Parse the transaction booking date (Buchungsdatum)
             booking_date = self.parse_date(data.get("Buchungsdatum", ""))
-            # Use "Wertstellung" if needed or fallback to booking date.
-            # For description, we can use the "Verwendungszweck" field.
             description = data.get("Verwendungszweck", "").strip()
-            # Parse the amount from the "Betrag (€)" field.
             amount = self.parse_amount(data.get("Betrag (€)", "0"))
-            # Account is taken from the "IBAN" field.
-            account = data.get("IBAN", "").strip()
+            # Anstatt Account wird nun From verwendet
+            sender = data.get("IBAN", "").strip()
+            # Neue Felder:
+            currency = "EUR"  # Standardwert
+            invoice = data.get("Kundenreferenz", "").strip() if "Kundenreferenz" in data else ""
+            to_field = data.get("Zahlungsempfänger*in", "").strip() if "Zahlungsempfänger*in" in data else ""
             file_path = self.csv_path
             bank = "DKB"
             
-            transaction = Transaction(booking_date, description, amount, account, file_path, bank)
+            transaction = Transaction(booking_date, description, amount, sender, file_path, bank, currency, invoice, to_field)
             self.transactions.append(transaction)
         return self.transactions
+

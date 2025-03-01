@@ -46,7 +46,24 @@ class PayPalPDFExtractor:
             account = ""  # Kein Konto-Feld vorhanden
             bank = "PayPal"
             transaction_code = parts[4]  # Annahme: 5. Spalte enthält den Transaktionscode
-            transaction = Transaction(iso_date, description, amount, account, self.pdf_path, bank)
+            # Kein Konto-Feld vorhanden – daher als leeren String übergeben
+            from_ = ""
+            currency = ""   # ggf. leer, falls keine Information vorhanden
+            invoice = ""    # z.B. könnte hier später eine Rechnungsnummer stehen
+            to_field = ""   # z.B. der Empfänger; hier ebenfalls als leerer String
+
+            transaction = Transaction(
+                iso_date,
+                description,
+                amount,
+                from_,
+                self.pdf_path,
+                bank,
+                currency,
+                invoice,
+                to_field
+            )
+
             # Setze den ID auf den PayPal Transaktionscode
             transaction.id = transaction_code
             self.transactions.append(transaction)
