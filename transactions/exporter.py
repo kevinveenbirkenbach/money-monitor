@@ -25,7 +25,7 @@ class BaseExporter:
                 "Account": t.account,
                 "File Path": t.file_path,
                 "Bank": t.bank,
-                "Transaction Hash": t.hash
+                "ID": t.id
             })
         return data
 
@@ -37,9 +37,9 @@ class CSVExporter(BaseExporter):
             return
         with open(self.output_file, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(["Date", "Description", "Amount (EUR)", "Account", "File Path", "Bank", "Transaction Hash"])
+            writer.writerow(["Date", "Description", "Amount (EUR)", "Account", "File Path", "Bank", "ID"])
             for t in self.transactions:
-                writer.writerow([t.date, t.description, t.amount, t.account, t.file_path, t.bank, t.hash])
+                writer.writerow([t.date, t.description, t.amount, t.account, t.file_path, t.bank, t.id])
         print(f"CSV file created: {self.output_file}")
 
 class HTMLExporter(BaseExporter):
@@ -65,29 +65,31 @@ class HTMLExporter(BaseExporter):
             "<table id='transactionsTable' class='table table-striped table-hover'>"
             "<thead class='table-dark'><tr>"
             "<th>Date</th><th>Description</th><th>Amount (EUR)</th>"
-            "<th>Account</th><th>File Path</th><th>Bank</th><th>Transaction Hash</th>"
+            "<th>Account</th><th><i class='bi bi-file-earmark-text me-1'></i> File</th><th>Bank</th><th>ID</th>"
             "</tr></thead><tbody>"
         )
         for t in self.transactions:
-            # Farbcodierung und Icon für Amount
-            if t.amount < 0:
+            tr_class=""
+            if t.amount is None:
+                amount_html = f'<span class="text-danger"> No Value defined! </span>'
+                icon = '<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>'
+                tr_class="table-warning" 
+            elif t.amount < 0:
                 amount_html = f'<span class="text-danger">{t.amount}</span>'
                 icon = '<i class="bi bi-arrow-down-circle-fill text-danger me-1"></i>'
             else:
                 amount_html = f'<span class="text-success">{t.amount}</span>'
                 icon = '<i class="bi bi-arrow-up-circle-fill text-success me-1"></i>'
-            # Dateisymbol vor Dateinamen
-            file_logo = '<i class="bi bi-file-earmark-text me-1"></i>'
-            file_link = f'<a href="{t.file_path}">{file_logo}{os.path.basename(t.file_path)}</a>'
+            file_link = f'<a href="{t.file_path}">{os.path.basename(t.file_path)}</a>'
             html += (
-                f"<tr>"
+                f"<tr class='{tr_class}'>"
                 f"<td>{t.date}</td>"
                 f"<td>{t.description}</td>"
                 f"<td>{icon}{amount_html}</td>"
                 f"<td>{t.account}</td>"
                 f"<td>{file_link}</td>"
                 f"<td>{t.bank}</td>"
-                f"<td>{t.hash}</td>"
+                f"<td>{t.id}</td>"
                 f"</tr>"
             )
         html += (

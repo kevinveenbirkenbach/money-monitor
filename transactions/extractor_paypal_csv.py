@@ -34,8 +34,8 @@ class PayPalCSVExtractor:
                 bank = "PayPal"
                 transaction_code = row.get("Transaktionscode", "").strip()
                 transaction = Transaction(iso_date, description, amount, account, file_path, bank)
-                # Setze den Transaktionscode als Hash, falls vorhanden.
+                # Setze den Transaktionscode als id, falls vorhanden.
                 if transaction_code:
-                    transaction.hash = transaction_code
+                    transaction.id = transaction_code
                 self.transactions.append(transaction)
         return self.transactions

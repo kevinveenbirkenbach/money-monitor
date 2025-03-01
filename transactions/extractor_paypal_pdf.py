@@ -5,7 +5,7 @@ from .transaction import Transaction
 
 class PayPalPDFExtractor:
     """Extrahiert Transaktionen aus einem PayPal PDF-Kontoauszug.
-    Dabei wird der PayPal Transaktionscode als Transaction Hash gesetzt."""
+    Dabei wird der PayPal Transaktionscode als ID gesetzt."""
     def __init__(self, pdf_path):
         self.pdf_path = pdf_path
         self.transactions = []
@@ -47,7 +47,7 @@ class PayPalPDFExtractor:
             bank = "PayPal"
             transaction_code = parts[4]  # Annahme: 5. Spalte enthält den Transaktionscode
             transaction = Transaction(iso_date, description, amount, account, self.pdf_path, bank)
-            # Setze den Transaction Hash auf den PayPal Transaktionscode
-            transaction.hash = transaction_code
+            # Setze den ID auf den PayPal Transaktionscode
+            transaction.id = transaction_code
             self.transactions.append(transaction)
         return self.transactions
