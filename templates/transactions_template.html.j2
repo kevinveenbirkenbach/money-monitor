@@ -20,7 +20,7 @@
     rel="stylesheet" 
     href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css"
   />
-  <!-- Bootstrap Icons (WICHTIG, damit Icons angezeigt werden) -->
+  <!-- Bootstrap Icons -->
   <link 
     rel="stylesheet" 
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
@@ -37,7 +37,6 @@
       text-overflow: ellipsis;
       cursor: pointer;
     }
-
     .description:hover {
         white-space: pre-line;
         max-width: none;
@@ -47,20 +46,16 @@
         padding: 5px;
         z-index: 100;
     }
-
     .full-view .container {
-    width: 100% !important;
-    max-width: 100% !important;
+      width: 100% !important;
+      max-width: 100% !important;
     }
-
     .full-view .table-responsive {
         overflow-x: visible;
     }
-
     .full-view #transactionsTable {
         width: 100% !important;
     }
-
   </style>
 </head>
 
@@ -96,13 +91,8 @@
         <tfoot>
           <tr>
             {% for header in headers %}
-              <th>
-                <input 
-                  type="text" 
-                  class="form-control form-control-sm" 
-                  placeholder="Search {{ header | title }}"
-                />
-              </th>
+              <!-- Footer cell with header text to be replaced by a filter input/dropdown -->
+              <th>{{ header | title }}</th>
             {% endfor %}
           </tr>
         </tfoot>
@@ -135,9 +125,7 @@
                         </div>
                       {% else %}
                         <div class="d-flex justify-content-between">
-                          <span class="text-dark">
-                            =
-                          </span>
+                          <span class="text-dark">=</span>
                           <span class="text-dark">
                             {{ "%.2f"|format(cell_value) }}
                           </span>
@@ -148,7 +136,7 @@
                     {% endif %}
                   </td>
                 {% elif header == "source" %}
-                  <td class="{{header}}">
+                  <td class="{{ header }}">
                     {% if cell_value %}
                       <a href="{{ cell_value }}">{{ cell_value }}</a>
                     {% else %}
@@ -156,23 +144,23 @@
                     {% endif %}
                   </td>
                 {% else %}
-                  <td class="{{header}}">{{ cell_value }}</td>
+                  <td class="{{ header }}">{{ cell_value }}</td>
                 {% endif %}
               {% endfor %}
             </tr>
           {% endfor %}
         </tbody>
       </table>
-        </div>
-      <div class="mb-3">
+    </div>
+    <div class="mb-3">
       <button id="resetFilters" class="btn btn-secondary btn-sm">
         <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
       </button>
       <button id="toggleFullView" class="btn btn-primary btn-sm">
-        <i class="bi bi-arrows-fullscreen me-1"></i> Toggle Full View
+        <i class="bi bi-arrows-fullscreen me-1"></i>Toggle Full View
       </button>
     </div>
-    </main>
+  </main>
   <footer class="text-center mt-4">
     <small>
       This project is licensed under the 
@@ -189,7 +177,6 @@
     src="https://code.jquery.com/jquery-3.6.0.min.js" 
     crossorigin="anonymous"
   ></script>
-
   <!-- DataTables core JS -->
   <script 
     src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"
@@ -197,7 +184,6 @@
   <script 
     src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"
   ></script>
-
   <!-- Responsive extension JS -->
   <script 
     src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"
@@ -207,156 +193,187 @@
   ></script>
 
   <script>
-$(document).ready(function () {
-    console.log("Initializing script...");
+    $(document).ready(function () {
+        console.log("Initializing script...");
 
-    /**
-     * Function to apply text truncation while preserving full text for search.
-     * Ensures that hovering over the element reveals the full text with line breaks.
-     * @param {string} selector - The CSS selector for the elements to truncate.
-     * @param {number} maxLength - The max length of visible text.
-     * @param {boolean} cutFromEnd - If true, truncates from the end, otherwise from the beginning.
-     */
-    function applyTextShortening(selector, maxLength, cutFromEnd = false) {
-        $(selector).each(function () {
-            let element = $(this);
-            let link = element.find("a"); // Check if the element contains a link
-            let originalText;
-            let truncatedText;
+        // ************************************************************
+        // Function: applyTextShortening
+        // Purpose: Truncate long text while keeping the full text available
+        //          for search. On hover, the full text is shown with line breaks.
+        // ************************************************************
+        function applyTextShortening(selector, maxLength, cutFromEnd = false) {
+            $(selector).each(function () {
+                let element = $(this);
+                let link = element.find("a");
+                let originalText = (link.length > 0) ? link.text().trim() : element.text().trim();
 
-            if (link.length > 0) {
-                originalText = link.text().trim();
-            } else {
-                originalText = element.text().trim();
-            }
-
-            console.log(`Processing ${selector}:`, originalText);
-
-            if (originalText.length > maxLength) {
-                truncatedText = cutFromEnd
-                    ? "…" + originalText.slice(-maxLength)
-                    : originalText.substring(0, maxLength) + "…";
-
-                element.attr("data-search", originalText);
-                console.log("Set data-search:", originalText);
-
-                if (link.length > 0) {
-                    link.text(truncatedText);
-                } else {
-                    element.html(`<span class="truncated-text">${truncatedText}</span>`);
-                }
-
-                function formatWithLineBreaks(text, length) {
-                    return text.replace(new RegExp(`(.{${length}})`, "g"), "$1\n");
-                }
-
-                element.hover(
-                    function () {
-                        let expandedText = formatWithLineBreaks(originalText, maxLength);
-
-                        if (link.length > 0) {
-                            link.text(expandedText);
-                        } else {
-                            $(this).html(`<span class="full-text">${expandedText}</span>`);
-                        }
-
-                        $(this).css("white-space", "pre-line"); // Make line breaks visible
-                    },
-                    function () {
-                        if (link.length > 0) {
-                            link.text(truncatedText);
-                        } else {
-                            $(this).html(`<span class="truncated-text">${truncatedText}</span>`);
-                        }
-
-                        $(this).css("white-space", "nowrap");
+                if (originalText.length > maxLength) {
+                    let truncatedText = cutFromEnd 
+                        ? "…" + originalText.slice(-maxLength) 
+                        : originalText.substring(0, maxLength) + "…";
+                    
+                    // Store full text in data-search attribute for custom filtering
+                    element.attr("data-search", originalText);
+                    
+                    if (link.length > 0) {
+                        link.text(truncatedText);
+                    } else {
+                        element.html('<span class="truncated-text">' + truncatedText + '</span>');
                     }
-                );
-            }
-        });
-    }
 
-    function initializeDataTable(isFullView) {
-        console.log("Initializing DataTable, fullView:", isFullView);
+                    // Helper to insert line breaks into the full text
+                    function formatWithLineBreaks(text, length) {
+                        return text.replace(new RegExp("(.{" + length + "})", "g"), "$1\n");
+                    }
 
-        if ($.fn.DataTable.isDataTable("#transactionsTable")) {
-            console.log("Destroying existing DataTable instance...");
-            $("#transactionsTable").DataTable().destroy();
+                    // On hover, expand the text; on mouse leave, show truncated text.
+                    element.hover(
+                        function () {
+                            let expandedText = formatWithLineBreaks(originalText, maxLength);
+                            if (link.length > 0) {
+                                link.text(expandedText);
+                            } else {
+                                $(this).html('<span class="full-text">' + expandedText + '</span>');
+                            }
+                            $(this).css("white-space", "pre-line");
+                        },
+                        function () {
+                            if (link.length > 0) {
+                                link.text(truncatedText);
+                            } else {
+                                $(this).html('<span class="truncated-text">' + truncatedText + '</span>');
+                            }
+                            $(this).css("white-space", "nowrap");
+                        }
+                    );
+                }
+            });
         }
 
-        let table = $("#transactionsTable").DataTable({
-            responsive: !isFullView,
-            scrollX: isFullView,
-            order: [[1, "asc"]], // Sorting by the 2nd column in ascending order
-            pageLength: 25,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "All"]
-            ]
+        // ************************************************************
+        // Create filter input fields in table footer.
+        // The footer cells initially contain the header text.
+        // This script replaces that text with an input element.
+        // ************************************************************
+        $("#transactionsTable tfoot th").each(function () {
+            var title = $(this).text();
+            $(this).html('<input type="text" placeholder="Search ' + title + '" class="form-control form-control-sm" />');
         });
 
-        console.log("DataTable initialized.");
+        // ************************************************************
+        // Add a custom global search filter to search using the full text
+        // stored in the data-search attribute.
+        // This ensures that even truncated text is searchable.
+        // ************************************************************
+        if (!$.fn.dataTable.ext.search.globalFilterAdded) {
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                var searchInput = $("#transactionsTable_filter input").val().toLowerCase();
+                var row = $("#transactionsTable tbody tr").eq(dataIndex);
+                var match = false;
+                row.find("td").each(function () {
+                    var searchValue = $(this).attr("data-search") || $(this).text();
+                    if (searchValue.toLowerCase().includes(searchInput)) {
+                        match = true;
+                        return false; // Break the loop when a match is found.
+                    }
+                });
+                return match;
+            });
+            $.fn.dataTable.ext.search.globalFilterAdded = true;
+        }
 
-        $("#transactionsTable tfoot input").on("keyup change", function () {
-            let colIndex = $(this).parent().index();
-            let searchTerm = $(this).val().toLowerCase();
+        // ************************************************************
+        // Function: initializeDataTable
+        // Purpose: Initialize (or reinitialize) the DataTable with full 
+        //          configuration, including responsive and filtering options.
+        // ************************************************************
+        function initializeDataTable(isFullView) {
+            console.log("Initializing DataTable, fullView:", isFullView);
 
-            console.log(`Filtering column ${colIndex} with term: ${searchTerm}`);
+            // Destroy any existing DataTable instance
+            if ($.fn.DataTable.isDataTable("#transactionsTable")) {
+                $("#transactionsTable").DataTable().destroy();
+            }
 
-            table.column(colIndex).search(searchTerm, false, false).draw();
-        });
-
-        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-            let searchInput = $("#transactionsTable_filter input").val().toLowerCase();
-            let row = $("#transactionsTable tbody tr").eq(dataIndex);
-            let match = false;
-
-            console.log("Global search input:", searchInput);
-
-            row.find("td").each(function () {
-                let searchValue = $(this).attr("data-search") || $(this).text();
-                console.log("Checking row value:", searchValue);
-
-                if (searchValue.toLowerCase().includes(searchInput)) {
-                    console.log("Match found!");
-                    match = true;
-                    return false;
+            var table = $("#transactionsTable").DataTable({
+                responsive: !isFullView,
+                scrollX: isFullView,
+                order: [[0, "desc"]], // Order by first column descending
+                pageLength: 25,
+                lengthMenu: [
+                    [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, -1],
+                    [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, "All"]
+                ],
+                // initComplete: Set up column filters (dropdown if few unique values, text input otherwise)
+                initComplete: function () {
+                    this.api().columns().every(function () {
+                        var column = this;
+                        var uniqueData = column.data().unique().sort().toArray();
+                        if (uniqueData.length <= 12) {
+                            // Use a select dropdown if there are few unique values.
+                            var select = $("<select class='form-select form-select-sm'><option value=''>All</option></select>")
+                                .appendTo($(column.footer()).empty())
+                                .on("change", function () {
+                                    var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                                    column.search(val ? "^" + val + "$" : "", true, false).draw();
+                                });
+                            $.each(uniqueData, function (i, d) {
+                                select.append("<option value='" + d + "'>" + d + "</option>");
+                            });
+                        } else {
+                            // For columns with many unique values, use a text input filter.
+                            $("input", column.footer()).on("keyup change clear", function () {
+                                if (column.search() !== this.value) {
+                                    column.search(this.value).draw();
+                                }
+                            });
+                        }
+                    });
                 }
             });
 
-            return match;
+            // Global search: redraw the table when the search input changes.
+            $("#transactionsTable_filter input").off("keyup change").on("keyup change", function () {
+                table.draw();
+            });
+
+            return table;
+        }
+
+        // ************************************************************
+        // Apply text shortening to specific columns.
+        // ************************************************************
+        applyTextShortening(".description", 36);
+        applyTextShortening(".id", 8, true);
+        applyTextShortening(".source", 20, true);
+
+        // Initialize the DataTable.
+        var table = initializeDataTable(false);
+
+        // ************************************************************
+        // Reset Filters button: Clear all column filters and the global search.
+        // ************************************************************
+        $("#resetFilters").on("click", function () {
+            console.log("Resetting filters...");
+            table.columns().search('').draw();
+            $("#transactionsTable_filter input").val('');
+            $("#transactionsTable tfoot input").val('');
+            $("#transactionsTable tfoot select").val('');
         });
 
-        $("#transactionsTable_filter input").off("keyup change").on("keyup change", function () {
-            console.log("Search updated, redrawing table...");
-            table.draw();
+        // ************************************************************
+        // Toggle Full View button: Toggle between full view and standard view.
+        // Reinitialize the DataTable with the updated settings.
+        // ************************************************************
+        $("#toggleFullView").on("click", function () {
+            $("body").toggleClass("full-view");
+            var isFullView = $("body").hasClass("full-view");
+            console.log("Toggling Full View:", isFullView);
+            table = initializeDataTable(isFullView);
         });
-    }
 
-    console.log("Applying text shortening...");
-    applyTextShortening(".description", 36);
-    applyTextShortening(".id", 8, true);
-    applyTextShortening(".source", 20, true);
-
-    initializeDataTable(false);
-
-    $("#resetFilters").on("click", function () {
-        console.log("Resetting filters...");
-        $("#transactionsTable").DataTable().search("").columns().search("").draw();
-        $("#transactionsTable tfoot input").val("");
+        console.log("DataTable active:", $.fn.DataTable.isDataTable("#transactionsTable"));
     });
-
-    $("#toggleFullView").on("click", function () {
-        $("body").toggleClass("full-view");
-        let isFullView = $("body").hasClass("full-view");
-        console.log("Toggling Full View:", isFullView);
-        initializeDataTable(isFullView);
-    });
-
-    console.log("DataTable active:", $.fn.DataTable.isDataTable("#transactionsTable"));
-});
-
-
   </script>
 </body>
 </html>
