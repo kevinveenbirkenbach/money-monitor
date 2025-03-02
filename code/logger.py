@@ -1,3 +1,5 @@
+import sys
+
 class Logger:
     RESET = "\033[0m"
     RED = "\033[91m"
@@ -10,6 +12,8 @@ class Logger:
     def __init__(self, debug=False, quiet=False):
         self.debug_enabled = debug
         self.quiet = quiet
+        self.warnings_count = 0
+        self.success_count = 0
 
     def info(self, message):
         if self.quiet:
@@ -17,6 +21,7 @@ class Logger:
         print(f"{self.BLUE}[INFO]{self.RESET} {message}")
 
     def warning(self, message):
+        self.warnings_count += 1
         if self.quiet:
             return
         print(f"{self.YELLOW}[WARNING]{self.RESET} {message}")
@@ -25,6 +30,8 @@ class Logger:
         if self.quiet:
             return
         print(f"{self.RED}[ERROR]{self.RESET} {message}")
+        # Exit the script with a non-zero exit code
+        sys.exit(1)
 
     def debug(self, message):
         if self.quiet or not self.debug_enabled:
@@ -32,6 +39,7 @@ class Logger:
         print(f"{self.PINK}[DEBUG]{self.RESET} {message}")
 
     def success(self, message):
+        self.success_count += 1
         if self.quiet:
             return
         print(f"{self.GREEN}[SUCCESS]{self.RESET} {message}")

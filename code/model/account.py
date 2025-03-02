@@ -8,8 +8,12 @@ class Account:
         self.institute = institute  # The institute the account belongs to  
 
     # Verifies if accout is valid
-    def isValid(self):
-        return bool(self.id or self.name or self.institute)
+    def isValid(self)->bool:
+        if bool(self.id or self.name or self.institute):
+            return True
+        else:
+            self.logger.warning("Account isn't valid.")
+            return False
     
     def getDictionary(self)-> dict:
         return {
@@ -30,9 +34,11 @@ class Account:
     
 class OwnerAccount(Account):
     # Verifies if accout is valid
-    def isValid(self):
-        return bool(
-            (self.id or self.name) 
-            and self.institute
-            )
+    def isValid(self)->bool:
+        if bool((self.id or self.name) and self.institute):
+            return True
+        else: 
+            self.logger.warning("OwnerAccount isn't valid.")
+            return False
+                
     

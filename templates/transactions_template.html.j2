@@ -271,7 +271,7 @@
         var table = $("#transactionsTable").DataTable({
           responsive: !isFullView,
           scrollX: isFullView,
-          order: [[0, "desc"]],
+          order: [[1, "asc"]],
           pageLength: 25,
           lengthMenu: [
             [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, -1],
@@ -359,6 +359,8 @@
       applyTextShortening(".description", 36);
       applyTextShortening(".id", 8, true);
       applyTextShortening(".source", 20, true);
+      applyTextShortening(".sender", 20, true);
+      applyTextShortening(".receiver", 20, true);
       
       initializeDataTable(false)
     });

@@ -26,13 +26,11 @@ class TransactionProcessor:
         if self.from_date or self.to_date:
             filtered = []
             for transaction in self.all_transactions:
-                if transaction.date:
-                    if self.from_date and transaction.date < self.from_date:
-                        continue
-                    if self.to_date and transaction.date > self.to_date:
-                        continue
-                else:
-                    self.logger.warning(f"Transaction {transaction} doesn't contain a date attribut.")
+                print(transaction)
+                if self.from_date and transaction.getDictionary().get("date") < self.from_date:
+                    continue
+                if self.to_date and transaction.getDictionary().get("date") > self.to_date:
+                    continue
                 filtered.append(transaction)
             self.all_transactions = filtered
         
