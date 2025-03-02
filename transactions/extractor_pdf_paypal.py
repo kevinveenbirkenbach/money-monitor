@@ -7,7 +7,7 @@ from .extractor_pdf import BasePDFExtractor
 
 class PayPalPDFExtractor(BasePDFExtractor):
     def extract_transactions(self):
-        text = extract_text(self.transaction_source_document)
+        text = extract_text(self.source_document)
         lines = text.splitlines()
 
         header_index = None
@@ -17,7 +17,7 @@ class PayPalPDFExtractor(BasePDFExtractor):
                 break
 
         if header_index is None:
-            self.logger.error(f"No 'Transaktionscode' header found in {self.transaction_source_document}.")
+            self.logger.error(f"No 'Transaktionscode' header found in {self.source_document}.")
             return []
 
         for line in lines[header_index + 1:]:
@@ -26,21 +26,21 @@ class PayPalPDFExtractor(BasePDFExtractor):
 
             parts = line.split()
             if len(parts) < 6:
-                self.logger.warning(f"Skipping line due to insufficient columns in {self.transaction_source_document}.")
+                self.logger.warning(f"Skipping line due to insufficient columns in {self.source_document}.")
                 continue
 
             date_str = parts[0]
             try:
                 iso_date = datetime.strptime(date_str, "%d.%m.%Y").strftime("%Y-%m-%d")
             except Exception as e:
-                self.logger.error(f"Date conversion error in {self.transaction_source_document} for '{date_str}': {e}")
+                self.logger.error(f"Date conversion error in {self.source_document} for '{date_str}': {e}")
                 iso_date = date_str
 
             description = " ".join(parts[1:4])
             try:
                 amount = float(parts[-1].replace(",", "."))
             except Exception as e:
-                self.logger.error(f"Amount conversion error in {self.transaction_source_document} for '{line}': {e}")
+                self.logger.error(f"Amount conversion error in {self.source_document} for '{line}': {e}")
                 amount = 0.0
 
             sender = ""
@@ -53,7 +53,7 @@ class PayPalPDFExtractor(BasePDFExtractor):
             # Hier setzen wir das Account-Feld basierend auf dem Betrag
             account = sender if amount < 0 else to_field
 
-            transaction = Transaction(iso_date, description, amount, sender, to_field, account, self.transaction_source_document, bank, currency, invoice)
+            transaction = Transaction(iso_date, description, amount, sender, to_field, account, self.source_document, bank, currency, invoice)
             transaction.id = transaction_code
             self.transactions.append(transaction)
 

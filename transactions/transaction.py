@@ -5,16 +5,17 @@ from datetime import datetime
 
 class Transaction:
     """Represents a single transaction."""
-    def __init__(self, logger:Logger, transaction_source_document:str):
+    def __init__(self, logger:Logger, source_document:str):
         self.logger                         = logger
         self.description                    = ""                            # Optional
         self.value                          = None                          # Needs to be defined type integer
-        self.transaction_partner            = None                          # Optional: The transaction partner
+        self.transaction_partner            = ""                            # Optional: The transaction partner
         self.account_id                     = None                          # Obligatoric: IBAN, Paypal address
-        self.transaction_source_document    = transaction_source_document   # Obligatoric: File in which the transaction was found
+        self.account_name                   = None                          # Optional: Name of the account owner
+        self.source_document    = source_document   # Obligatoric: File in which the transaction was found
         self.finance_institute              = None                          # The finance institute which served the transaction
         self.currency                       = None                          # Obligatoric    
-        self.invoice                        = ""                            # Optional: The invoice number   
+        self.invoice_id                     = ""                            # Optional: The invoice number   
         self.transaction_date               = None                          # Obligatoric: The date when the transaction was done
         self.transaction_id                 = None                          # Obligatoric: The unique identifier of the transaction
         
@@ -26,7 +27,7 @@ class Transaction:
                 return
             except ValueError:
                 continue
-        self.logger.error(f"Invalid date format '{date_string}' in file {self.transaction_source_document}.")
+        self.logger.error(f"Invalid date format '{date_string}' in file {self.source_document}.")
 
     def setTransactionId(self):
         if not self.transaction_id:
@@ -34,6 +35,18 @@ class Transaction:
             hash_base32 = base64.b32encode(digest).decode('utf-8').rstrip('=')
             fixed_length = 18
             self.transaction_id = hash_base32[:fixed_length]
+    
+    def setReceiver(self, receiver:str):
+        if self.value < 0:
+            self.transaction_partner = receiver
+        else:
+            self.account_name = receiver
+
+    def setSender(self, sender:str):
+        if self.value > 0:
+            self.transaction_partner = sender
+        else:
+            self.account_name = sender
     
     def getReceiver(self):
         if self.value < 0:
@@ -56,13 +69,13 @@ class Transaction:
         validations = {
             "value":                        float,  # value needs to be of type int
             "account_id":                   str,    # account_id can be either a string (IBAN, Paypal address)
-            "transaction_source_document":  str,    # transaction_source_document should be a string (file path)
+            "source_document":  str,    # source_document should be a string (file path)
             "finance_institute":            str,    # finance_institute can be either a string
             "currency":                     str,    # currency should be a string (e.g., 'EUR', 'USD')
             "transaction_date":             str,    # transaction_date can be either a string (date)
             "transaction_id":               str,    # id can be either a string
             "description":                  str,    # description should be a string (optional)
-            "invoice":                      str,    # invoice should be a string (optional)
+            "invoice_id":                   str,    # invoice should be a string (optional)
         }
         
         for var_name, expected_type in validations.items():
@@ -72,7 +85,7 @@ class Transaction:
                 return False         
         return True
 
-    def getDictionary(self):
+    def getDictionary(self)-> dict:
         return {
             "transaction_id":               self.transaction_id,
             "finance_institute":            self.finance_institute,
@@ -83,10 +96,8 @@ class Transaction:
             "sender":                       self.getSender(),
             "receiver":                     self.getReceiver(),
             "description":                  self.description,
-            "transaction_partner":          self.transaction_partner,
-            "transaction_source_document":  self.transaction_source_document,
-            "invoice":                      self.invoice,
-            
+            "source_document":  self.source_document,
+            "invoice_id":                   self.invoice_id,
         }
 
     def __str__(self):

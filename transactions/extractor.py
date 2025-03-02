@@ -1,8 +1,8 @@
 from .transaction import Transaction
 from .logger import Logger
 class BaseExtractor:
-    def __init__(self, transaction_source_document:str, logger:Logger):
-        self.transaction_source_document    = transaction_source_document
+    def __init__(self, source_document:str, logger:Logger):
+        self.source_document    = source_document
         self.transactions                   = []
         self.logger                         = logger
     
