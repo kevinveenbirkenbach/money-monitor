@@ -1,6 +1,6 @@
 import argparse
-from transactions.processor import TransactionProcessor
-from transactions.logger import Logger
+from code.processor import TransactionProcessor
+from code.logger import Logger
 
 
 def main():

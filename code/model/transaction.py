@@ -1,6 +1,6 @@
 import hashlib
 import base64
-from .logger import Logger
+from ..logger import Logger
 from datetime import datetime
 
 class Transaction:
@@ -12,7 +12,7 @@ class Transaction:
         self.transaction_partner            = ""                            # Optional: The transaction partner
         self.account_id                     = None                          # Obligatoric: IBAN, Paypal address
         self.account_name                   = None                          # Optional: Name of the account owner
-        self.source_document    = source_document   # Obligatoric: File in which the transaction was found
+        self.source_document                = source_document               # Obligatoric: File in which the transaction was found
         self.finance_institute              = None                          # The finance institute which served the transaction
         self.currency                       = None                          # Obligatoric    
         self.invoice_id                     = ""                            # Optional: The invoice number   

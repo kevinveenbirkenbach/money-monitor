@@ -1,11 +1,11 @@
 import re
 from datetime import datetime
 from pdfminer.high_level import extract_text
-from .transaction import Transaction
-from .logger import Logger
-from .extractor_pdf import BasePDFExtractor
+from ...model.transaction import Transaction
+from ...logger import Logger
+from .base import PDFExtractor
 
-class PayPalPDFExtractor(BasePDFExtractor):
+class PayPalPDFExtractor(PDFExtractor):
     def extract_transactions(self):
         text = extract_text(self.source_document)
         lines = text.splitlines()

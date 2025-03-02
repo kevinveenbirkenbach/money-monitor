@@ -1,0 +1,116 @@
+import os
+import importlib
+from pdfminer.high_level import extract_text
+
+class ExtractorFactory:
+    """
+    Factory class that decides which extractor to use for a given file
+    based on extension and textual patterns.
+    """
+    def __init__(self, logger):
+        """
+        :param logger: An instance of your Logger class for debug/info/warning/error output
+        """
+        self.logger = logger
+
+        # Mappings for CSV-based extractors:
+        # Each entry is: (condition_func, module_name, class_name)
+        # condition_func receives a string containing the first ~10 lines
+        self.csv_extractor_mappings = [
+            (
+                lambda content: "Transaktionscode" in content or "PayPal" in content,
+                "code.extractor.csv.paypal",    # e.g. .extractor_csv_paypal
+                "PayPalCSVExtractor"
+            ),
+            (
+                lambda content: "Buchungsdatum" in content,
+                "code.extractor.csv.dkb", 
+                "DKBCSVExtractor"
+            ),
+        ]
+
+        # Mappings for PDF-based extractors:
+        # Each entry is: (condition_func, module_name, class_name)
+        # condition_func receives (text, lower_text)
+        self.pdf_extractor_mappings = [
+            (
+                lambda text, lower_text: "paypal" in lower_text
+                                         and ("händlerkonto-id" in lower_text
+                                              or "transaktionsübersicht" in lower_text),
+                "code.extractor.pdf.paypal",
+                "PayPalPDFExtractor"
+            ),
+            (
+                lambda text, lower_text: "consorsbank" in lower_text or "kontoauszug" in lower_text,
+                "code.extractor.pdf.consorsbank",
+                "ConsorsbankPDFExtractor"
+            ),
+            (
+                lambda text, lower_text: "ing-diba" in lower_text or "ingddeffxxx" in lower_text,
+                "code.extractor.pdf.ing",
+                "IngPDFExtractor"
+            ),
+            (
+                lambda text, lower_text: "barclaycard" in lower_text or "barcdehaxx" in lower_text,
+                "code.extractor.pdf.barclay",
+                "BarclaysPDFExtractor"
+            ),
+        ]
+
+    def create_extractor(self, file_path):
+        """
+        Chooses and instantiates the correct extractor based on the file extension
+        and file content. Returns an extractor instance or None if no match is found.
+        """
+        ext = os.path.splitext(file_path)[1].lower()
+
+        # Handle CSV
+        if ext == ".csv":
+            with open(file_path, encoding="utf-8") as f:
+                # Read first ~10 lines to detect patterns
+                lines = [f.readline() for _ in range(10)]
+            content = " ".join(lines)
+
+            # Go through each CSV mapping
+            for condition_func, module_name, class_name in self.csv_extractor_mappings:
+                if condition_func(content):
+                    return self._instantiate_extractor(module_name, class_name, file_path)
+
+            self.logger.info(f"No matching CSV extractor found for '{file_path}'.")
+            return None
+
+        # Handle PDF
+        elif ext == ".pdf":
+            try:
+                text = extract_text(file_path, maxpages=1) or ""
+                lower_text = text.lower()
+            except Exception as e:
+                self.logger.warning(f"Could not extract text from '{file_path}'. Reason: {e}")
+                return None
+
+            # Go through each PDF mapping
+            for condition_func, module_name, class_name in self.pdf_extractor_mappings:
+                if condition_func(text, lower_text):
+                    return self._instantiate_extractor(module_name, class_name, file_path)
+
+            self.logger.info(f"No matching PDF extractor found for '{file_path}'.")
+            return None
+
+        # Unsupported extension
+        else:
+            self.logger.info(f"Unsupported file extension '{ext}' for {file_path}.")
+            return None
+
+    def _instantiate_extractor(self, module_name, class_name, file_path):
+        """
+        Dynamically imports the extractor module and instantiates the extractor class.
+        """
+        try:
+            # Assuming the extractor modules are in the same package directory:
+            module = importlib.import_module(f"{module_name}")
+            extractor_class = getattr(module, class_name)
+            # If your extractor needs a logger, pass it here as well
+            return extractor_class(file_path, self.logger)
+        except Exception as e:
+            self.logger.error(f"Failed to instantiate extractor {class_name} from {module_name}: {e}")
+            return None

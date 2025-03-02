@@ -1,10 +1,10 @@
 import csv
-from .transaction import Transaction
-from .logger import Logger
-from .extractor_csv import BaseCSVExtractor
+from ...model.transaction import Transaction
+from ...logger import Logger
+from .base import CSVExtractor
 
 
-class DKBCSVExtractor(BaseCSVExtractor):
+class DKBCSVExtractor(CSVExtractor):
     def parse_amount(self, amount_str):
         amount_str = amount_str.strip().replace('"', '').replace("\u00A0", "").replace(" ", "")
         sign = 1

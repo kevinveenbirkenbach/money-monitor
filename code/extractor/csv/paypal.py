@@ -1,10 +1,10 @@
 import csv
 from datetime import datetime
-from .transaction import Transaction
-from .logger import Logger
-from .extractor_csv import BaseCSVExtractor
+from ...model.transaction import Transaction
+from ...logger import Logger
+from .base import CSVExtractor
 
-class PayPalCSVExtractor(BaseCSVExtractor):
+class PayPalCSVExtractor(CSVExtractor):
     def extract_transactions(self):
         with open(self.source_document, newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=',')

@@ -1,10 +1,10 @@
 import re
 from pdfminer.high_level import extract_text
-from .transaction import Transaction
-from .logger import Logger
-from .extractor_pdf import BasePDFExtractor
+from ...model.transaction import Transaction
+from ...logger import Logger
+from .base import PDFExtractor
 
-class PDFConsorsbankExtractor(BasePDFExtractor):
+class ConsorsbankPDFExtractor(PDFExtractor):
     def parse_amount(self,s):
         s = s.strip()
         sign = 1

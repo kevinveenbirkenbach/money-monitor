@@ -2,6 +2,8 @@ import os
 import concurrent.futures
 from pdfminer.high_level import extract_text
 from .logger import Logger
+from .factories.extractor import ExtractorFactory
+from .model.transaction import Transaction
 
 class TransactionProcessor:
     """Coordinates reading files (PDF, CSV) from multiple paths and exporting transactions."""
@@ -76,61 +78,30 @@ class TransactionProcessor:
                 os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
             if fmt == "csv":
-                from .exporter import CSVExporter
+                from .exporter.csv import CSVExporter
                 exporter = CSVExporter(self.all_transactions, output_file)
                 exporter.export()
             elif fmt == "html":
-                from .exporter import HTMLExporter
+                from .exporter.html import HTMLExporter
                 exporter = HTMLExporter(self.all_transactions, output_file, from_date=self.from_date, to_date=self.to_date)
                 exporter.export()
             elif fmt == "json":
-                from .exporter import JSONExporter
+                from .exporter.json import JSONExporter
                 exporter = JSONExporter(self.all_transactions, output_file)
                 exporter.export()
             elif fmt == "yaml":
-                from .exporter import YamlExporter
+                from .exporter.yaml import YamlExporter
                 exporter = YamlExporter(self.all_transactions, output_file)
                 exporter.export()
         if self.print_transactions:
             self.console_output()
 
     def extract_from_file(self,file_path):
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext == ".csv":
-            with open(file_path, encoding="utf-8") as f:
-                lines = [f.readline() for _ in range(10)]
-            content = " ".join(lines)
-            if "Transaktionscode" in content or "PayPal" in content:
-                from .extractor_csv_paypal import PayPalCSVExtractor
-                extractor = PayPalCSVExtractor(file_path)
-            elif "Buchungsdatum" in content:
-                from .extractor_csv_dkb import DKBCSVExtractor
-                extractor = DKBCSVExtractor(file_path, self.logger)
-            else:
-                return []
-        elif ext == ".pdf":
-            try:
-                text = extract_text(file_path, maxpages=1)
-                lower_text = text.lower()
-            except Exception:
-                text = ""
-                self.logger.info(f"No text could be extracted from {file_path}.")
-            if "PayPal" in text and ("Händlerkonto-ID" in text or "Transaktionsübersicht" in text):
-                from .extractor_pdf_paypal import PayPalPDFExtractor
-                extractor = PayPalPDFExtractor(file_path)
-            elif "Consorsbank" in text or "KONTOAUSZUG" in text:
-                from .extractor_pdf_consorsbank import PDFConsorsbankExtractor
-                extractor = PDFConsorsbankExtractor(file_path, self.logger)
-            elif "ing-diba" in lower_text or "ingddeffxxx" in lower_text:
-                from .extractor_pdf_ing import IngPDFExtractor
-                extractor = IngPDFExtractor(file_path, self.logger)
-            elif "barclaycard" in lower_text or "barcdehaxx" in lower_text:
-                from .extractor_pdf_barclay import BarclaysPDFExtractor
-                extractor = BarclaysPDFExtractor(file_path, self.logger)
-        if 'extractor' in locals():
+        extractor_factory = ExtractorFactory(self.logger)
+        extractor = extractor_factory.create_extractor(file_path)
+        if extractor:
             return extractor.extract_transactions()
         else:
-            self.logger.info(f"No extractor found for {file_path}.")
             return []
 
     def console_output(self):

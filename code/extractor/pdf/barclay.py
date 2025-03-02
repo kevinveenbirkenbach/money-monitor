@@ -1,11 +1,11 @@
 import re
 from datetime import datetime
 import pdfplumber
-from .transaction import Transaction
-from .logger import Logger
-from .extractor_pdf import BasePDFExtractor
+from ...model.transaction import Transaction
+from ...logger import Logger
+from .base import PDFExtractor
 
-class BarclaysPDFExtractor(BasePDFExtractor):
+class BarclaysPDFExtractor(PDFExtractor):
     def create_transaction(self, iso_date, description, amount_str, sender, currency, invoice, to_field):
         try:
             amount_value = float(amount_str)
