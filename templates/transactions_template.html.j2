@@ -208,39 +208,56 @@
 
   <script>
 $(document).ready(function() {
-    function applyTextShortening(selector, maxLength, cutFromEnd = false) {
-        document.querySelectorAll(selector).forEach(element => {
-            let originalText = element.innerText.trim();
-
+function applyTextShortening(selector, maxLength, cutFromEnd = false) {
+    document.querySelectorAll(selector).forEach(element => {
+        let link = element.querySelector("a"); // Prüft, ob ein Link in der Zelle ist
+        let originalText;
+        let truncatedText;
+        
+        if (link) {
+            originalText = link.textContent.trim(); // NUR den Text im Link extrahieren
             if (originalText.length > maxLength) {
-                let truncatedText = cutFromEnd 
+                truncatedText = cutFromEnd 
                     ? '…' + originalText.slice(-maxLength) 
                     : originalText.substring(0, maxLength) + '…';
 
-                element.setAttribute('data-full-text', originalText);
-                element.innerText = truncatedText;
+                link.setAttribute('data-full-text', originalText); // Volltext im Link speichern
+                link.textContent = truncatedText; // Link-Text kürzen
 
-                function insertLineBreaks(text, n) {
-                    return text.replace(new RegExp(`(.{${n}})`, 'g'), '$1\n');
-                }
+                link.addEventListener('mouseenter', function () {
+                    this.textContent = originalText; // Zeigt vollen Link-Text beim Hover
+                });
+
+                link.addEventListener('mouseleave', function () {
+                    this.textContent = truncatedText; // Zeigt wieder die gekürzte Version
+                });
+            }
+        } else {
+            originalText = element.textContent.trim(); // Standard-Text ohne Link
+            if (originalText.length > maxLength) {
+                truncatedText = cutFromEnd 
+                    ? '…' + originalText.slice(-maxLength) 
+                    : originalText.substring(0, maxLength) + '…';
+
+                element.setAttribute('data-full-text', originalText); // Volltext speichern
+                element.innerHTML = `<span class="truncated-text">${truncatedText}</span>`; // Nur sichtbaren Teil kürzen
 
                 element.addEventListener('mouseenter', function () {
-                    let fullText = this.getAttribute('data-full-text'); 
-                    this.innerText = insertLineBreaks(fullText, maxLength);
-                    this.style.whiteSpace = "pre-line";
+                    this.innerHTML = `<span class="full-text">${originalText}</span>`; // Originaltext anzeigen
                 });
 
                 element.addEventListener('mouseleave', function () {
-                    this.innerText = truncatedText;
-                    this.style.whiteSpace = "nowrap";
+                    this.innerHTML = `<span class="truncated-text">${truncatedText}</span>`; // Wieder gekürzt anzeigen
                 });
             }
-        });
-    }
+        }
+    });
+}
 
     // Wende die Methode auf die entsprechenden Spalten an
     applyTextShortening('.description', 36);  
     applyTextShortening('.id', 8, true);  
+    applyTextShortening('.source', 20, true);  
 
     // Funktion zur Initialisierung von DataTables (abhängig von full-view)
     function initializeDataTable(isFullView) {
