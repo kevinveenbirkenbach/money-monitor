@@ -1,6 +1,7 @@
 import argparse
 from code.processor import TransactionProcessor
 from code.logger import Logger
+import yaml
 
 
 def main():
@@ -19,15 +20,29 @@ def main():
     parser.add_argument("-q", "--quiet", action="store_true", help="Suppress all output (except CMD if --print-cmd).")
     parser.add_argument("-d", "--debug", action="store_true", help="Enable detailed debug output.")
     parser.add_argument("--print-cmd", action="store_true", help="Print constructed CMD commands before execution.")
+    parser.add_argument("--config", type=str, help="Path to a YAML config file with default values.")
+    
     args = parser.parse_args()
 
+    # Initialize logger
     logger = Logger(debug=args.debug, quiet=args.quiet)
     logger.info("Starting main process...")
 
+    # Load YAML config if provided
+    config_data = {}
+    if args.config:
+        try:
+            with open(args.config, "r", encoding="utf-8") as f:
+                config_data = yaml.safe_load(f)
+        except Exception as e:
+            logger.error(f"Failed to load config file '{args.config}': {e}")
+            config_data = {}
+
+    # Pass config_data to the TransactionProcessor
     processor = TransactionProcessor(
-        input_paths=args.input_paths, 
+        input_paths=args.input_paths,
         output_base=args.output_base,
-        print_transactions=args.console, 
+        print_transactions=args.console,
         recursive=args.recursive,
         export_types=args.export_types or [],
         from_date=args.from_date,
@@ -35,10 +50,10 @@ def main():
         create_dirs=args.create_dirs,
         quiet=args.quiet,
         logger=logger,
-        print_cmd=args.print_cmd
+        print_cmd=args.print_cmd,
+        config=config_data  # <-- Pass the loaded YAML as a dict
     )
     processor.process()
-
 
 if __name__ == "__main__":
     main()

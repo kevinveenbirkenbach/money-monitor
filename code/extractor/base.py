@@ -1,10 +1,12 @@
 from ..model.transaction import Transaction
 from ..logger import Logger
+import yaml
 class Extractor:
-    def __init__(self, source:str, logger:Logger):
-        self.source    = source
-        self.transactions                   = []
-        self.logger                         = logger
+    def __init__(self, source:str, logger:Logger, config:yaml):
+        self.source         = source
+        self.transactions   = []
+        self.logger         = logger
+        self.config         = config or {}
     
     def appendTransaction(self, transaction:Transaction):
         transaction.setTransactionId()

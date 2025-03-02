@@ -7,12 +7,10 @@ class ExtractorFactory:
     Factory class that decides which extractor to use for a given file
     based on extension and textual patterns.
     """
-    def __init__(self, logger):
-        """
-        :param logger: An instance of your Logger class for debug/info/warning/error output
-        """
+    def __init__(self, logger, config=None):
         self.logger = logger
-
+        self.config = config or {}
+        
         # Mappings for CSV-based extractors:
         # Each entry is: (condition_func, module_name, class_name)
         # condition_func receives a string containing the first ~10 lines
@@ -110,7 +108,7 @@ class ExtractorFactory:
             module = importlib.import_module(f"{module_name}")
             extractor_class = getattr(module, class_name)
             # If your extractor needs a logger, pass it here as well
-            return extractor_class(file_path, self.logger)
+            return extractor_class(file_path, self.logger, config=self.config)
         except Exception as e:
             self.logger.error(f"Failed to instantiate extractor {class_name} from {module_name}: {e}")
             return None

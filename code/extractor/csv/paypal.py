@@ -11,11 +11,12 @@ class PayPalCSVExtractor(CSVExtractor):
         with open(self.source, newline='', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f, delimiter=',')
             headers = reader.fieldnames
-            print(headers)
             for row in reader:
                 transaction = Transaction(self.logger, self.source)
                 transaction.owner = OwnerAccount(self.logger)
-                transaction.owner.id = "test"
+                transaction.owner.id = self.config.get("institutes").get("paypal").get("owner").get("id")
+                transaction.owner.name = self.config.get("institutes").get("paypal").get("owner").get("name")
+                # transaction.owner.name = self.config.institutes.paypal.owner.name
                 transaction.owner.institute = "Paypal"
 
                 # -------------------------

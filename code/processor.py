@@ -6,9 +6,9 @@ from .factories.extractor import ExtractorFactory
 from .model.transaction import Transaction
 
 class TransactionProcessor:
-    """Coordinates reading files (PDF, CSV) from multiple paths and exporting transactions."""
     def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_types=None,
-                 from_date=None, to_date=None, create_dirs=False, quiet=False, logger=Logger(), print_cmd=False):
+                 from_date=None, to_date=None, create_dirs=False, quiet=False, logger=Logger(),
+                 print_cmd=False, config=None):
         self.input_paths = input_paths
         self.output_base = output_base
         self.all_transactions = []
@@ -21,6 +21,15 @@ class TransactionProcessor:
         self.quiet = quiet
         self.print_cmd = print_cmd
         self.logger = logger
+        self.config = config or {}  # Store the loaded YAML defaults here
+
+    def extract_from_file(self, file_path):
+        extractor_factory = ExtractorFactory(self.logger, config=self.config)
+        extractor = extractor_factory.create_extractor(file_path)
+        if extractor:
+            return extractor.extract_transactions()
+        else:
+            return []
 
     def _filter_by_date(self):
         if self.from_date or self.to_date:
@@ -94,7 +103,7 @@ class TransactionProcessor:
             self.console_output()
 
     def extract_from_file(self,file_path):
-        extractor_factory = ExtractorFactory(self.logger)
+        extractor_factory = ExtractorFactory(self.logger, config=self.config)
         extractor = extractor_factory.create_extractor(file_path)
         if extractor:
             return extractor.extract_transactions()
