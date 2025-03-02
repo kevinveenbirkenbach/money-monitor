@@ -3,150 +3,208 @@
 <head>
   <meta charset="utf-8">
   <title>Transactions</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" 
-        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
-  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
+  <!-- Bootstrap CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" 
+    rel="stylesheet"
+    integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" 
+    crossorigin="anonymous"
+  >
+  <!-- DataTables core CSS -->
+  <link 
+    rel="stylesheet" 
+    href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"
+  />
+  <!-- Responsive extension CSS -->
+  <link 
+    rel="stylesheet" 
+    href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css"
+  />
+  <!-- Bootstrap Icons (WICHTIG, damit Icons angezeigt werden) -->
+  <link 
+    rel="stylesheet" 
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    crossorigin="anonymous"
+  >
   <style>
-    .amount{
-        min-width: 120px;
+    .amount {
+      min-width: 120px;
+      white-space: nowrap;
     }
   </style>
 </head>
+
 <body>
   <div class="container my-4">
     <h1 class="mb-4">Transactions</h1>
+
     {% if filter_info %}
       <p class="text-muted"><small>{{ filter_info }}</small></p>
     {% endif %}
+
     <div class="mb-3">
       <button id="resetFilters" class="btn btn-secondary btn-sm">
-        <i class="bi bi-artransaction-clockwise me-1"></i>Reset Filters
+        <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
       </button>
     </div>
-    {% set headers = transactions[0].getDictionary().keys() | list if transactions|length > 0 else [] %}
-    <table id="transactionsTable" class="table table-striped table-hover">
-    <thead class="table-dark">
-        <tr>
+
+    <div class="table-responsive">
+      {% set headers = transactions[0].getDictionary().keys() | list if transactions|length > 0 else [] %}
+      <table 
+        id="transactionsTable" 
+        class="table table-striped table-hover table-responsive nowrap" 
+        style="width: 100%"
+      >
+        <thead class="table-dark">
+          <tr>
             {% for header in headers %}
-            <th class="text-nowrap">
-                {% if header in icon_map %}<i class="{{ icon_map[header]|safe }}"></i>{% endif %}
+              <th data-priority="{{ loop.index }}">
+                {% if header in icon_map %}
+                  <i class="{{ icon_map[header]|safe }}"></i>
+                {% endif %}
                 {{ header.replace('_', ' ') | title }}
-            </th>
+              </th>
             {% endfor %}
-        </tr>
-    </thead>
-    <tfoot>
-        <tr>
+          </tr>
+        </thead>
+        <tfoot>
+          <tr>
             {% for header in headers %}
-            <th><input type="text" class="form-control form-control-sm" placeholder="Search {{ header | title }}"></th>
+              <th>
+                <input 
+                  type="text" 
+                  class="form-control form-control-sm" 
+                  placeholder="Search {{ header | title }}"
+                />
+              </th>
             {% endfor %}
-        </tr>
-    </tfoot>
-    <tbody>
-        {% for transaction_object in transactions %}
-        {% set transaction = transaction_object.getDictionary() %}
-        <tr class="{% if transaction.value is none %}table-warning{% endif %}">
-        {% for header in headers %}
-            {% if header == "value" %}
-            <td class="text-nowrap amount">
-                {% if transaction[header] is not none %}
-                {% if transaction[header] < 0 %}
-                    <!-- Negative -->
-                    <span class="float-start me-2 text-danger">
-                    <i class="bi bi-arrow-down-circle-fill"></i>
-                    </span>
-                    <span class="float-end text-end text-danger">
-                    {{ "%.2f"|format(transaction[header]) }}
-                    </span>
-                {% elif transaction[header] > 0 %}
-                    <!-- Positive -->
-                    <span class="float-start me-2 text-success">
-                    <i class="bi bi-arrow-up-circle-fill"></i>
-                    </span>
-                    <span class="float-end text-end text-success">
-                    {{ "%.2f"|format(transaction[header]) }}
-                    </span>
+          </tr>
+        </tfoot>
+        <tbody>
+          {% for transaction_object in transactions %}
+            {% set row_dict = transaction_object.getDictionary() %}
+            <tr class="{% if row_dict.value is none %}table-warning{% endif %}">
+              {% for header in headers %}
+                {% set cell_value = row_dict[header] %}
+                {% if header == "value" %}
+                  <td class="amount">
+                    {% if cell_value is not none %}
+                      {% if cell_value < 0 %}
+                        <div class="d-flex justify-content-between">
+                          <span class="text-danger">
+                            <i class="bi bi-arrow-down-circle-fill"></i>
+                          </span>
+                          <span class="text-danger">
+                            {{ "%.2f"|format(cell_value) }}
+                          </span>
+                        </div>
+                      {% elif cell_value > 0 %}
+                        <div class="d-flex justify-content-between">
+                          <span class="text-success">
+                            <i class="bi bi-arrow-up-circle-fill"></i>
+                          </span>
+                          <span class="text-success">
+                            {{ "%.2f"|format(cell_value) }}
+                          </span>
+                        </div>
+                      {% else %}
+                        <div class="d-flex justify-content-between">
+                          <span class="text-dark">
+                            =
+                          </span>
+                          <span class="text-dark">
+                            {{ "%.2f"|format(cell_value) }}
+                          </span>
+                        </div>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-danger">No Value defined!</span>
+                    {% endif %}
+                  </td>
+                {% elif header == "source_document" %}
+                  <td>
+                    {% if cell_value %}
+                      <a href="{{ cell_value }}">[...]{{ cell_value[-14:] }}</a>
+                    {% else %}
+                      <span class="text-danger">No Document</span>
+                    {% endif %}
+                  </td>
                 {% else %}
-                    <!-- Zero -->
-                    <span class="float-start me-2 text-dark">
-                    =
-                    </span>
-                    <span class="float-end text-end text-dark">
-                    {{ "%.2f"|format(transaction[header]) }}
-                    </span>
+                  <td>{{ cell_value }}</td>
                 {% endif %}
-                {% else %}
-                <!-- Value is None -->
-                <span class="text-danger">No Value defined!</span>
-                {% endif %}
-            </td>
-            {% elif header == "source_document" %}
-                <td>
-                    {% if header in icon_map %}<i class="{{ icon_map[header]|safe }}"></i>{% endif %}
-                    <a href="{{ transaction[header] }}">[...]{{ transaction[header][-14:] }}</a>
-                </td>
-            {% else %}
-                <td>{{ transaction[header] }}</td>
-            {% endif %}
-            {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-    </table>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
+
   <footer class="text-center mt-4">
     <small>
-      This project is licensed under the <a href="https://opensource.org/licenses/MIT" target="_blank">MIT License</a> &mdash; 
-      developed by <a href="https://www.veen.world/" target="_blank">Kevin Veen-Birkenbach</a>. 
-      View source on <a href="https://github.com/kevinveenbirkenbach/financial-helper" target="_blank">GitHub</a>.
+      This project is licensed under the 
+      <a href="https://opensource.org/licenses/MIT" target="_blank">MIT License</a> &mdash; 
+      developed by 
+      <a href="https://www.veen.world/" target="_blank">Kevin Veen-Birkenbach</a>. 
+      View source on 
+      <a href="https://github.com/kevinveenbirkenbach/financial-helper" target="_blank">GitHub</a>.
     </small>
   </footer>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- jQuery -->
+  <script 
+    src="https://code.jquery.com/jquery-3.6.0.min.js" 
+    crossorigin="anonymous"
+  ></script>
+
+  <!-- DataTables core JS -->
+  <script 
+    src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"
+  ></script>
+  <script 
+    src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"
+  ></script>
+
+  <!-- Responsive extension JS -->
+  <script 
+    src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"
+  ></script>
+  <script 
+    src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"
+  ></script>
+
   <script>
     $(document).ready(function() {
-        $('#transactionsTable tfoot th').each(function () {
-            var title = $(this).text();
-            $(this).html('<input type="text" placeholder="Search ' + title + '" class="form-control form-control-sm" />');
-        });
-        
-        var table = $('#transactionsTable').DataTable({
-            "order": [[ 0, "desc" ]],
-            "pageLength": 25,
-            "lengthMenu": [[10, 25, 50, 100, 200, 500, 1000, 2000, 5000, -1], [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, "All"]],
-            initComplete: function () {
-                this.api().columns().every(function () {
-                    var column = this;
-                    var uniqueData = column.data().unique().sort().toArray();
-                    if(uniqueData.length <= 12) {
-                        var select = $("<select class='form-select form-select-sm'><option value=''>All</option></select>")
-                            .appendTo($(column.footer()).empty())
-                            .on("change", function () {
-                                var val = $.fn.dataTable.util.escapeRegex($(this).val());
-                                column.search(val ? "^" + val + "$" : "", true, false).draw();
-                            });
-                        $.each(uniqueData, function (i, d) {
-                            select.append("<option value='" + d + "'>" + d + "</option>");
-                        });
-                    } else {
-                        $("input", column.footer()).on("keyup change clear", function () {
-                            if (column.search() !== this.value) {
-                                column.search(this.value).draw();
-                            }
-                        });
-                    }
-                });
-            }
-        });
+      // Initialize DataTable with Responsive
+      var table = $('#transactionsTable').DataTable({
+        responsive: {
+          details: {
+            type: 'inline' 
+          }
+        },
+        order: [[ 0, "desc" ]],
+        pageLength: 25,
+        lengthMenu: [
+          [10, 25, 50, 100, -1], 
+          [10, 25, 50, 100, "All"]
+        ]
+      });
 
-        // Reset Filters button: clear all column searches and redraw table.
-        $('#resetFilters').on('click', function () {
-            table.columns().search('').draw();
-            $('#transactionsTable tfoot input').val('');
-            $('#transactionsTable tfoot select').val('');
+      // Setup column-based searching from tfoot
+      table.columns().every(function () {
+        var column = this;
+        $('input', column.footer()).on('keyup change clear', function () {
+          if (column.search() !== this.value) {
+            column.search(this.value).draw();
+          }
         });
+      });
+
+      // Reset Filters button
+      $('#resetFilters').on('click', function () {
+        table.columns().search('').draw();
+        $('#transactionsTable tfoot input').val('');
+      });
     });
   </script>
 </body>
