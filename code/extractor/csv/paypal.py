@@ -19,8 +19,8 @@ class PayPalCSVExtractor(CSVExtractor):
                 except Exception as e:
                     self.logger.error(f"Date conversion error in {self.source_document}: {e}")
                     transaction.date = row.get('\ufeff"Datum"', "").strip()
-                transaction.transaction_partner     = row.get("Absender E-Mail-Adresse", "").strip() + row.get("Name", "").strip()
-                transaction.transaction_id          = row.get("Transaktionscode", "").strip()
+                transaction.partner     = row.get("Absender E-Mail-Adresse", "").strip() + row.get("Name", "").strip()
+                transaction.id          = row.get("Transaktionscode", "").strip()
                 transaction.description             = row.get("Beschreibung", "").strip()
                 transaction.currency                = row.get("Währung", "").strip()
                 transaction.value                   = float(row.get("Netto", "").replace(",", ".").strip())

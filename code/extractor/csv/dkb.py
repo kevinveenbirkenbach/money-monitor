@@ -2,6 +2,7 @@ import csv
 from ...model.transaction import Transaction
 from ...logger import Logger
 from .base import CSVExtractor
+from code.model.account import Account, OwnerAccount
 
 
 class DKBCSVExtractor(CSVExtractor):
@@ -22,6 +23,8 @@ class DKBCSVExtractor(CSVExtractor):
         with open(self.source_document, newline='', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=';')
             rows = list(reader)
+            
+        giro_iban = "test"
 
         header_row_index = next((i for i, row in enumerate(rows) if row and row[0].strip().lower() == "buchungsdatum"), None)
         if header_row_index is None:
@@ -36,14 +39,17 @@ class DKBCSVExtractor(CSVExtractor):
                 continue
             data                                    =   dict(zip(headers, row))
             transaction                             =   Transaction(self.logger,self.source_document);
-            transaction.account_id                  =   data.get("IBAN", "").strip()
             transaction.value                       =   self.parse_amount(data.get("Betrag (€)", "0"))
-            transaction.finance_institute           =   "DKB"
+            transaction.owner                       =   OwnerAccount(id=giro_iban,institute="DKB")
+            partner                                 =   Account(id=data.get("IBAN", "").strip())
+            if transaction.value > 0:
+                transaction.owner.name              =   data.get("Zahlungsempfänger*in", "").strip()
+                transaction.setReceiver(transaction.owner)
+                transaction.partner.name = data.get("Zahlungspflichtige*r", "").strip()
+                transaction.setSender(transaction.partner)
             transaction.currency                    =   "EUR"
             transaction.description                 =   data.get("Verwendungszweck", "").strip()
             transaction.invoice_id                  =   data.get("Kundenreferenz", "").strip()
             transaction.setTransactionDate(data.get("Buchungsdatum", ""));
-            transaction.setSender(data.get("Zahlungspflichtige*r", "").strip())
-            transaction.setReceiver(data.get("Zahlungsempfänger*in", "").strip())
             self.appendTransaction(transaction)
         return self.transactions

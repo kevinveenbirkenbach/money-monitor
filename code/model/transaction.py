@@ -2,22 +2,21 @@ import hashlib
 import base64
 from ..logger import Logger
 from datetime import datetime
+from code.model.account import Account
 
 class Transaction:
     """Represents a single transaction."""
-    def __init__(self, logger:Logger, source_document:str):
+    def __init__(self, logger:Logger, source_document:str, partner:Account=Account(), owner:Account = None):
         self.logger                         = logger
-        self.description                    = ""                            # Optional
-        self.value                          = None                          # Needs to be defined type integer
-        self.transaction_partner            = ""                            # Optional: The transaction partner
-        self.account_id                     = None                          # Obligatoric: IBAN, Paypal address
-        self.account_name                   = None                          # Optional: Name of the account owner
-        self.source_document                = source_document               # Obligatoric: File in which the transaction was found
-        self.finance_institute              = None                          # The finance institute which served the transaction
-        self.currency                       = None                          # Obligatoric    
-        self.invoice_id                     = ""                            # Optional: The invoice number   
+        self.description                    = ""                # Optional
+        self.value                          = None              # Needs to be defined type integer
+        self.owner                          = owner             # Owner of this transaction
+        self.partner                        = partner              # Optional: The transaction partner
+        self.source_document                = source_document   # Obligatoric: File in which the transaction was found
+        self.currency                       = None              # Obligatoric    
+        self.invoice_id                     = ""                # Optional: The invoice number   
         self.date               = None                          # Obligatoric: The date when the transaction was done
-        self.transaction_id                 = None                          # Obligatoric: The unique identifier of the transaction
+        self.id                 = None              # Obligatoric: The unique identifier of the transaction
         
     def setTransactionDate(self,date_string):
         date_string = date_string.strip().replace('"', '')
@@ -30,52 +29,52 @@ class Transaction:
         self.logger.error(f"Invalid date format '{date_string}' in file {self.source_document}.")
 
     def setTransactionId(self):
-        if not self.transaction_id:
+        if not self.id:
             digest = hashlib.sha256(self.__str__().encode()).digest()
             hash_base32 = base64.b32encode(digest).decode('utf-8').rstrip('=')
             fixed_length = 15
-            self.transaction_id = "TID" + hash_base32[:fixed_length]
+            self.id = "TID" + hash_base32[:fixed_length]
     
-    def setReceiver(self, receiver:str):
+    def setReceiver(self, receiver:Account):
         if self.value < 0:
-            self.transaction_partner = receiver
+            self.partner = receiver
         else:
             self.account_name = receiver
 
-    def setSender(self, sender:str):
+    def setSender(self, sender:Account):
         if self.value > 0:
-            self.transaction_partner = sender
+            self.partner = sender
         else:
             self.account_name = sender
     
-    def getReceiver(self):
+    def getReceiver(self)-> Account:
         if self.value < 0:
-            if self.transaction_partner:
-                return self.transaction_partner
+            if self.partner:
+                return self.partner
         if self.value > 0:
-            return self.account_id
-        return "";
+            return self.owner
+        return None;
     
-    def getSender(self):
+    def getSender(self)-> Account:
         if self.value > 0:
-            if self.transaction_partner:
-                return self.transaction_partner
+            if self.partner:
+                return self.partner
         if self.value < 0:
-            return self.account_id
-        return "";
+            return self.owner
+        return None;
     
     def isValid(self):
         # Dictionary with variable names as keys and expected types as values
         validations = {
-            "value":                        float,  # value needs to be of type int
-            "account_id":                   str,    # account_id can be either a string (IBAN, Paypal address)
-            "source_document":  str,    # source_document should be a string (file path)
-            "finance_institute":            str,    # finance_institute can be either a string
-            "currency":                     str,    # currency should be a string (e.g., 'EUR', 'USD')
-            "date":             str,    # date can be either a string (date)
-            "transaction_id":               str,    # id can be either a string
-            "description":                  str,    # description should be a string (optional)
-            "invoice_id":                   str,    # invoice should be a string (optional)
+            "value":                float,      # value needs to be of type int
+            "owner":                Account,    # Owner account
+            "partner":              Account,    # The partner account
+            "source_document":      str,        # source_document should be a string (file path)
+            "currency":             str,        # currency should be a string (e.g., 'EUR', 'USD')
+            "date":                 str,        # date can be either a string (date)
+            "id":                   str,        # id can be either a string
+            "description":          str,        # description should be a string (optional)
+            "invoice_id":           str,        # invoice should be a string (optional)
         }
         
         for var_name, expected_type in validations.items():
@@ -83,22 +82,27 @@ class Transaction:
             if not isinstance(var_value, expected_type):
                 self.logger.error(f"{var_name} should be of type {expected_type.__name__}\n Type <<{type(var_value)}>> isn't correct.")
                 return False         
-        return True
+        return self.owner.isValid(), self.partner.isValid()
 
     def getDictionary(self)-> dict:
-        return {
-            "transaction_id":               self.transaction_id,
-            "finance_institute":            self.finance_institute,
-            "account_id":                   self.account_id,
-            "date":             self.date,
-            "value":                        self.value,
-            "currency":                     self.currency,
-            "sender":                       self.getSender(),
-            "receiver":                     self.getReceiver(),
-            "description":                  self.description,
-            "source_document":  self.source_document,
-            "invoice_id":                   self.invoice_id,
+        dictionary = {
+            "id":              self.id,
+            "date":            self.date,
+            "currency":        self.currency,
+            "value":           self.value,
+            "sender":          self.getSender() and self.getSender().getIdentification(),
+            "receiver":        self.getReceiver() and self.getReceiver().getIdentification(),
+            "description":     self.description,
+            "source_document": self.source_document,
+            "invoice_id":      self.invoice_id,
         }
+        for key, value in self.partner.getDictionary().items():
+            dictionary["partner_" + key]  = value        
+        
+        for key, value in self.owner.getDictionary().items():
+            dictionary["owner_" + key]  = value
+        
+        return dictionary
 
     def __str__(self):
         output = ""

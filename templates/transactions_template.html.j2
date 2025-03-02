@@ -62,7 +62,9 @@
                 {% if header in icon_map %}
                   <i class="{{ icon_map[header]|safe }}"></i>
                 {% endif %}
-                {{ header.replace('_', ' ') | title }}
+                {% if header != "currency" %}
+                  {{ header.replace('_', ' ') | title }}
+                {% endif %}
               </th>
             {% endfor %}
           </tr>
