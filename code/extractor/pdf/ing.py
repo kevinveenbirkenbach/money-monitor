@@ -40,20 +40,29 @@ class IngPDFExtractor(PDFExtractor):
                 return []
 
             # Attempt to find the IBAN anywhere in the document
-            # e.g., "IBAN DE86 5001 0517 5426 7687 95"
             full_text = ""
             for page in pdf.pages:
                 page_text = page.extract_text() or ""
                 full_text += page_text + "\n"
 
-            iban_match = re.search(
-                r"IBAN\s+(DE\d{2}(?:\s+\d{4}){3}\s+\d{2})", 
-                full_text
-            )
-            if iban_match:
-                account_iban = iban_match.group(1).replace(" ", "")
-            else:
-                account_iban = None
+                # Look for "IBAN" plus something that looks like DE + up to 20 digits,
+                # possibly with spaces in between. Then strip out the spaces.
+                iban_match = re.search(
+                    r'IBAN\s+(DE[0-9\s]{20,30})',  # "DE" + 20 digits, allowing spaces
+                    full_text
+                )
+                if iban_match:
+                    raw_iban = iban_match.group(1)                # e.g. "DE86 5001 0517 5426 7687 95"
+                    account_iban = re.sub(r'\s+', '', raw_iban)   # => "DE86500105175426768795"
+                    # Optionally verify we have 22 characters:
+                    if len(account_iban) == 22:
+                        self.logger.debug(f"Captured IBAN: {account_iban}")
+                    else:
+                        self.logger.warning(
+                            f"Found IBAN-like text but length != 22: {account_iban}"
+                        )
+                else:
+                    account_iban = None
 
             # We will process each page line by line, building transactions
             # when we match the main transaction line pattern.
