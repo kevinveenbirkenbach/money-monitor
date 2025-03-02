@@ -139,7 +139,7 @@
                 {% elif header == "source" %}
                   <td class="{{ header }}">
                     {% if cell_value %}
-                      <a href="{{ cell_value }}">{{ cell_value }}</a>
+                      <a href="{{ cell_value }}" target="_blank">{{ cell_value }}</a>
                     {% else %}
                       <span class="text-danger">No Document</span>
                     {% endif %}

@@ -155,10 +155,10 @@ class Transaction:
         - Only works if self.date is a datetime object with a valid tzinfo.
         """
         if not isinstance(self.date, datetime):
-            return "self.date is not a datetime object"
+            return None
 
         if self.date.tzinfo is None:
-            return "No time zone information in self.date"
+            return None
 
         # Extract just the time (HH:MM)
         time_str = self.date.strftime("%H:%M")
