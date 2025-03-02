@@ -25,7 +25,7 @@ class Account:
             return self.name
         if self.institute:
             return self.institute
-        self.logger.error("This account doesn't have an identity.")
+        self.logger.warning("Account doesn't have an identity.")
         return ""
     
 class OwnerAccount(Account):
