@@ -33,8 +33,8 @@ class Transaction:
         if not self.transaction_id:
             digest = hashlib.sha256(self.__str__().encode()).digest()
             hash_base32 = base64.b32encode(digest).decode('utf-8').rstrip('=')
-            fixed_length = 18
-            self.transaction_id = hash_base32[:fixed_length]
+            fixed_length = 15
+            self.transaction_id = "TID" + hash_base32[:fixed_length]
     
     def setReceiver(self, receiver:str):
         if self.value < 0:
