@@ -47,22 +47,30 @@
         padding: 5px;
         z-index: 100;
     }
+
+    .full-view .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    }
+
+    .full-view .table-responsive {
+        overflow-x: visible;
+    }
+
+    .full-view #transactionsTable {
+        width: 100% !important;
+    }
+
   </style>
 </head>
 
 <body>
-  <div class="container my-4">
+  <main class="container my-4">
     <h1 class="mb-4">Transactions</h1>
 
     {% if filter_info %}
       <p class="text-muted"><small>{{ filter_info }}</small></p>
     {% endif %}
-
-    <div class="mb-3">
-      <button id="resetFilters" class="btn btn-secondary btn-sm">
-        <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
-      </button>
-    </div>
 
     <div class="table-responsive">
       {% set headers = transactions[0].getDictionary().keys() | list if transactions|length > 0 else [] %}
@@ -155,9 +163,16 @@
           {% endfor %}
         </tbody>
       </table>
+        </div>
+      <div class="mb-3">
+      <button id="resetFilters" class="btn btn-secondary btn-sm">
+        <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
+      </button>
+      <button id="toggleFullView" class="btn btn-primary btn-sm">
+        <i class="bi bi-arrows-fullscreen me-1"></i> Toggle Full View
+      </button>
     </div>
-  </div>
-
+    </main>
   <footer class="text-center mt-4">
     <small>
       This project is licensed under the 
@@ -197,72 +212,69 @@ $(document).ready(function() {
         document.querySelectorAll(selector).forEach(element => {
             let originalText = element.innerText.trim();
 
-            // Prüfen, ob Kürzung notwendig ist
             if (originalText.length > maxLength) {
-                let truncatedText;
-                
-                if (cutFromEnd) {
-                    truncatedText = '…' + originalText.slice(-maxLength); // Hinten kürzen mit `...` vorne
-                } else {
-                    truncatedText = originalText.substring(0, maxLength) + '…'; // Vorne kürzen mit `...` hinten
-                }
+                let truncatedText = cutFromEnd 
+                    ? '…' + originalText.slice(-maxLength) 
+                    : originalText.substring(0, maxLength) + '…';
 
-                element.setAttribute('data-full-text', originalText); // Volltext speichern
-                element.innerText = truncatedText; // Gekürzten Text anzeigen
+                element.setAttribute('data-full-text', originalText);
+                element.innerText = truncatedText;
 
-                // Funktion für Zeilenumbrüche alle maxLength Zeichen
                 function insertLineBreaks(text, n) {
-                    return text.replace(new RegExp(`(.{${n}})`, 'g'), '$1\n'); // Fügt Zeilenumbrüche ein
+                    return text.replace(new RegExp(`(.{${n}})`, 'g'), '$1\n');
                 }
 
-                // Hover-Event nur hinzufügen, wenn gekürzt wurde
                 element.addEventListener('mouseenter', function () {
                     let fullText = this.getAttribute('data-full-text'); 
-                    this.innerText = insertLineBreaks(fullText, maxLength); // Zeilenumbrüche nach maxLength Zeichen
-                    this.style.whiteSpace = "pre-line"; // Macht Umbrüche sichtbar
+                    this.innerText = insertLineBreaks(fullText, maxLength);
+                    this.style.whiteSpace = "pre-line";
                 });
 
                 element.addEventListener('mouseleave', function () {
-                    this.innerText = truncatedText; // Gekürzten Text wiederherstellen
-                    this.style.whiteSpace = "nowrap"; // Zeigt wieder als eine Zeile an
+                    this.innerText = truncatedText;
+                    this.style.whiteSpace = "nowrap";
                 });
             }
         });
     }
 
     // Wende die Methode auf die entsprechenden Spalten an
-    applyTextShortening('.description', 36);  // Vorne gekürzt, `...` am Ende
-    applyTextShortening('.id', 5, true);            // Vorne gekürzt, `...` am Ende
+    applyTextShortening('.description', 36);  
+    applyTextShortening('.id', 8, true);  
 
-    // Initialize DataTable with Responsive
-    var table = $('#transactionsTable').DataTable({
-        responsive: {
-            details: {
-                type: 'inline'
-            }
-        },
-        order: [[0, "desc"]],
-        pageLength: 25,
-        lengthMenu: [
-            [10, 25, 50, 100, -1],
-            [10, 25, 50, 100, "All"]
-        ]
-    });
+    // Funktion zur Initialisierung von DataTables (abhängig von full-view)
+    function initializeDataTable(isFullView) {
+        if ($.fn.DataTable.isDataTable('#transactionsTable')) {
+            $('#transactionsTable').DataTable().destroy(); // Entferne bestehende Instanz
+        }
 
-    // Setup column-based searching from tfoot
-    table.columns().every(function () {
-        var column = this;
-        $('input', column.footer()).on('keyup change clear', function () {
-            if (column.search() !== this.value) {
-                column.search(this.value).draw();
-            }
+        $('#transactionsTable').DataTable({
+            responsive: !isFullView, // Responsive NUR, wenn nicht Full View
+            scrollX: isFullView, // Scrollen aktivieren, wenn Full View an ist
+            order: [[0, "desc"]],
+            pageLength: 25,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "All"]
+            ]
         });
-    });
+    }
+
+    // Starte die DataTable normal (responsive aktiviert)
+    initializeDataTable(false);
 
     // Reset Filters button
     $('#resetFilters').on('click', function () {
-        table.columns().search('').draw();
+        $('#transactionsTable').DataTable().columns().search('').draw();
         $('#transactionsTable tfoot input').val('');
+    });
+
+    // Toggle Full View
+    $('#toggleFullView').on('click', function () {
+        $('body').toggleClass('full-view');
+
+        let isFullView = $('body').hasClass('full-view');
+        initializeDataTable(isFullView); // Re-initialisiere DataTable basierend auf Modus
     });
 });
   </script>
