@@ -17,10 +17,10 @@ class DKBCSVExtractor(CSVExtractor):
         try:
             return sign * float(amount_str.replace(".", "").replace(",", "."))
         except ValueError as e:
-            self.logger.error(f"Failed to convert amount '{amount_str}' in file {self.source_document}: {e}")
+            self.logger.error(f"Failed to convert amount '{amount_str}' in file {self.source}: {e}")
 
     def extract_transactions(self):
-        with open(self.source_document, newline='', encoding='utf-8') as f:
+        with open(self.source, newline='', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=';')
             rows = list(reader)
             
@@ -28,7 +28,7 @@ class DKBCSVExtractor(CSVExtractor):
 
         header_row_index = next((i for i, row in enumerate(rows) if row and row[0].strip().lower() == "buchungsdatum"), None)
         if header_row_index is None:
-            self.logger.error(f"No valid header row found in {self.source_document}.")
+            self.logger.error(f"No valid header row found in {self.source}.")
             return []
 
         headers = [h.strip().replace('"', '') for h in rows[header_row_index]]
@@ -38,7 +38,7 @@ class DKBCSVExtractor(CSVExtractor):
             if not any(field.strip() for field in row):
                 continue
             data                                    =   dict(zip(headers, row))
-            transaction                             =   Transaction(self.logger,self.source_document);
+            transaction                             =   Transaction(self.logger,self.source);
             transaction.value                       =   self.parse_amount(data.get("Betrag (€)", "0"))
             transaction.owner                       =   OwnerAccount(self.logger,id=giro_iban,institute="DKB")
             partner                                 =   Account(self.logger,id=data.get("IBAN", "").strip())

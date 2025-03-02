@@ -109,4 +109,4 @@ class TransactionProcessor:
             return
         print("\nAll Transactions:")
         for t in self.all_transactions:
-            print(f"{t.date}\t{t.description}\t{t.value}\t{t.sender}\t{t.source_document}\t{t.bank}\t{t.id}")
+            print(f"{t.date}\t{t.description}\t{t.value}\t{t.sender}\t{t.source}\t{t.bank}\t{t.id}")

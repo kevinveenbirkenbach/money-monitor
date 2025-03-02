@@ -35,9 +35,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      /*max-width: 100px; /* Anpassen je nach Layout */
-      /*display: inline-block;
-      cursor: pointer; /* Zeigt an, dass man interagieren kann */
+      cursor: pointer;
     }
 
     .description:hover {
@@ -141,24 +139,16 @@
                       <span class="text-danger">No Value defined!</span>
                     {% endif %}
                   </td>
-                {% elif header == "source_document" %}
-                  <td>
+                {% elif header == "source" %}
+                  <td class="{{header}}">
                     {% if cell_value %}
-                      <a href="{{ cell_value }}">...{{ cell_value[-18:] }}</a>
+                      <a href="{{ cell_value }}">{{ cell_value }}</a>
                     {% else %}
                       <span class="text-danger">No Document</span>
                     {% endif %}
                   </td>
-                {% elif header == "id" %}
-                  <td>
-                    {{ cell_value[-7:] }}
-                  </td>
-                {% elif header == "description" %}
-                  <td class="description">
-                    {{ cell_value }}
-                  </td>
                 {% else %}
-                  <td>{{ cell_value }}</td>
+                  <td class="{{header}}">{{ cell_value }}</td>
                 {% endif %}
               {% endfor %}
             </tr>
@@ -202,68 +192,79 @@
   ></script>
 
   <script>
-    $(document).ready(function() {
-      document.querySelectorAll('.description').forEach(element => {
-          let originalText = element.innerText.trim(); // Originaltext speichern
-          let maxLength = 18; // Maximale Zeichenanzahl für gekürzte Ansicht
+$(document).ready(function() {
+    function applyTextShortening(selector, maxLength, cutFromEnd = false) {
+        document.querySelectorAll(selector).forEach(element => {
+            let originalText = element.innerText.trim();
 
-          // Prüfen, ob Kürzung notwendig ist
-          if (originalText.length > maxLength) {
-              let truncatedText = originalText.substring(0, maxLength) + '…'; // Nur wenn nötig `...` hinzufügen
+            // Prüfen, ob Kürzung notwendig ist
+            if (originalText.length > maxLength) {
+                let truncatedText;
+                
+                if (cutFromEnd) {
+                    truncatedText = '…' + originalText.slice(-maxLength); // Hinten kürzen mit `...` vorne
+                } else {
+                    truncatedText = originalText.substring(0, maxLength) + '…'; // Vorne kürzen mit `...` hinten
+                }
 
-              element.setAttribute('data-full-text', originalText); // Volltext speichern
-              element.innerText = truncatedText; // Gekürzten Text anzeigen
+                element.setAttribute('data-full-text', originalText); // Volltext speichern
+                element.innerText = truncatedText; // Gekürzten Text anzeigen
 
-              // Funktion für Zeilenumbrüche alle 18 Zeichen
-              function insertLineBreaks(text, n) {
-                  return text.replace(new RegExp(`(.{${n}})`, 'g'), '$1\n'); // Fügt Zeilenumbrüche ein
-              }
+                // Funktion für Zeilenumbrüche alle maxLength Zeichen
+                function insertLineBreaks(text, n) {
+                    return text.replace(new RegExp(`(.{${n}})`, 'g'), '$1\n'); // Fügt Zeilenumbrüche ein
+                }
 
-              // Hover-Event nur hinzufügen, wenn gekürzt wurde
-              element.addEventListener('mouseenter', function () {
-                  let fullText = this.getAttribute('data-full-text'); 
-                  this.innerText = insertLineBreaks(fullText, maxLength); // Zeilenumbrüche nach 18 Zeichen
-                  this.style.whiteSpace = "pre-line"; // Macht Umbrüche sichtbar
-              });
+                // Hover-Event nur hinzufügen, wenn gekürzt wurde
+                element.addEventListener('mouseenter', function () {
+                    let fullText = this.getAttribute('data-full-text'); 
+                    this.innerText = insertLineBreaks(fullText, maxLength); // Zeilenumbrüche nach maxLength Zeichen
+                    this.style.whiteSpace = "pre-line"; // Macht Umbrüche sichtbar
+                });
 
-              element.addEventListener('mouseleave', function () {
-                  this.innerText = truncatedText; // Gekürzten Text wiederherstellen
-                  this.style.whiteSpace = "nowrap"; // Zeigt wieder als eine Zeile an
-              });
-          }
-      });
+                element.addEventListener('mouseleave', function () {
+                    this.innerText = truncatedText; // Gekürzten Text wiederherstellen
+                    this.style.whiteSpace = "nowrap"; // Zeigt wieder als eine Zeile an
+                });
+            }
+        });
+    }
 
-      // Initialize DataTable with Responsive
-      var table = $('#transactionsTable').DataTable({
+    // Wende die Methode auf die entsprechenden Spalten an
+    applyTextShortening('.description', 36);  // Vorne gekürzt, `...` am Ende
+    applyTextShortening('.id', 5, true);            // Vorne gekürzt, `...` am Ende
+
+    // Initialize DataTable with Responsive
+    var table = $('#transactionsTable').DataTable({
         responsive: {
-          details: {
-            type: 'inline' 
-          }
+            details: {
+                type: 'inline'
+            }
         },
-        order: [[ 0, "desc" ]],
+        order: [[0, "desc"]],
         pageLength: 25,
         lengthMenu: [
-          [10, 25, 50, 100, -1], 
-          [10, 25, 50, 100, "All"]
+            [10, 25, 50, 100, -1],
+            [10, 25, 50, 100, "All"]
         ]
-      });
+    });
 
-      // Setup column-based searching from tfoot
-      table.columns().every(function () {
+    // Setup column-based searching from tfoot
+    table.columns().every(function () {
         var column = this;
         $('input', column.footer()).on('keyup change clear', function () {
-          if (column.search() !== this.value) {
-            column.search(this.value).draw();
-          }
+            if (column.search() !== this.value) {
+                column.search(this.value).draw();
+            }
         });
-      });
+    });
 
-      // Reset Filters button
-      $('#resetFilters').on('click', function () {
+    // Reset Filters button
+    $('#resetFilters').on('click', function () {
         table.columns().search('').draw();
         $('#transactionsTable tfoot input').val('');
-      });
     });
+});
   </script>
 </body>
 </html>

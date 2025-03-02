@@ -32,7 +32,7 @@ class HTMLExporter(Exporter):
             "currency": "bi bi-cash-stack me-1",
             "description": "bi bi-card-text me-1",
             "invoice": "bi bi-receipt me-1",
-            "source_document": "bi bi-file-earmark-text me-1"
+            "source": "bi bi-file-earmark-text me-1"
         }
 
         env = Environment(loader=FileSystemLoader(searchpath="./templates"))

@@ -1,8 +1,8 @@
 from ..model.transaction import Transaction
 from ..logger import Logger
 class Extractor:
-    def __init__(self, source_document:str, logger:Logger):
-        self.source_document    = source_document
+    def __init__(self, source:str, logger:Logger):
+        self.source    = source
         self.transactions                   = []
         self.logger                         = logger
     

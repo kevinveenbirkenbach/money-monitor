@@ -42,7 +42,7 @@ class ConsorsbankPDFExtractor(PDFExtractor):
         return datum_str
 
     def extract_transactions(self):
-        text = extract_text(self.source_document)
+        text = extract_text(self.source)
         global_year = None
         year_match = re.search(r'\b\d{2}\.\d{2}\.(\d{2,4})\b', text)
         if year_match:
@@ -114,7 +114,7 @@ class ConsorsbankPDFExtractor(PDFExtractor):
                     sender = ""
                     receiver = account
 
-                transaction = Transaction(datum_iso, full_description, amount_val, sender, receiver, account, self.source_document, "Consorsbank", "", "")
+                transaction = Transaction(datum_iso, full_description, amount_val, sender, receiver, account, self.source, "Consorsbank", "", "")
                 self.transactions.append(transaction)
                 self.logger.info(f"Transaction {transaction} appended.")
                 if current_balance is not None:

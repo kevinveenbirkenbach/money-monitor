@@ -9,16 +9,16 @@ class IngPDFExtractor(PDFExtractor):
     def create_transaction(self, iso_date, description, amount_str, sender, currency, invoice, to_field):
         try:
             amount_value = float(amount_str)
-            return Transaction(iso_date, description, amount_value, sender, self.source_document, self.bank_type, currency, invoice, to_field)
+            return Transaction(iso_date, description, amount_value, sender, self.source, self.bank_type, currency, invoice, to_field)
         except Exception as e:
-            self.logger.error(f"Error converting amount '{amount_str}' in {iso_date} for file {self.source_document}.")
+            self.logger.error(f"Error converting amount '{amount_str}' in {iso_date} for file {self.source}.")
             self.logger.debug(f"Description: '{description}', Sender: '{sender}', Bank: '{self.bank_type}', Currency: '{currency}', Invoice: '{invoice}', To: '{to_field}'. Exception: {e}")
             return None
 
     def extract_transactions(self):
-        with pdfplumber.open(self.source_document) as pdf:
+        with pdfplumber.open(self.source) as pdf:
             if not pdf.pages:
-                self.logger.warning(f"No pages found in {self.source_document}")
+                self.logger.warning(f"No pages found in {self.source}")
                 return []
             first_page_text = pdf.pages[0].extract_text()
             self.bank_type = "ING"
@@ -39,7 +39,7 @@ class IngPDFExtractor(PDFExtractor):
                         try:
                             iso_date = datetime.strptime(date, "%d.%m.%Y").strftime("%Y-%m-%d")
                         except Exception as e:
-                            self.logger.error(f"Date conversion error for '{date}' in file {self.source_document}: {e}")
+                            self.logger.error(f"Date conversion error for '{date}' in file {self.source}: {e}")
                             iso_date = date
                         sender = self.account
                         currency = "EUR"
