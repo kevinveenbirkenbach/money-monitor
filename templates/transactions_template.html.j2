@@ -207,93 +207,156 @@
   ></script>
 
   <script>
-$(document).ready(function() {
-function applyTextShortening(selector, maxLength, cutFromEnd = false) {
-    document.querySelectorAll(selector).forEach(element => {
-        let link = element.querySelector("a"); // Prüft, ob ein Link in der Zelle ist
-        let originalText;
-        let truncatedText;
-        
-        if (link) {
-            originalText = link.textContent.trim(); // NUR den Text im Link extrahieren
-            if (originalText.length > maxLength) {
-                truncatedText = cutFromEnd 
-                    ? '…' + originalText.slice(-maxLength) 
-                    : originalText.substring(0, maxLength) + '…';
+$(document).ready(function () {
+    console.log("Initializing script...");
 
-                link.setAttribute('data-full-text', originalText); // Volltext im Link speichern
-                link.textContent = truncatedText; // Link-Text kürzen
+    /**
+     * Function to apply text truncation while preserving full text for search.
+     * Ensures that hovering over the element reveals the full text with line breaks.
+     * @param {string} selector - The CSS selector for the elements to truncate.
+     * @param {number} maxLength - The max length of visible text.
+     * @param {boolean} cutFromEnd - If true, truncates from the end, otherwise from the beginning.
+     */
+    function applyTextShortening(selector, maxLength, cutFromEnd = false) {
+        $(selector).each(function () {
+            let element = $(this);
+            let link = element.find("a"); // Check if the element contains a link
+            let originalText;
+            let truncatedText;
 
-                link.addEventListener('mouseenter', function () {
-                    this.textContent = originalText; // Zeigt vollen Link-Text beim Hover
-                });
-
-                link.addEventListener('mouseleave', function () {
-                    this.textContent = truncatedText; // Zeigt wieder die gekürzte Version
-                });
+            if (link.length > 0) {
+                originalText = link.text().trim();
+            } else {
+                originalText = element.text().trim();
             }
-        } else {
-            originalText = element.textContent.trim(); // Standard-Text ohne Link
+
+            console.log(`Processing ${selector}:`, originalText);
+
             if (originalText.length > maxLength) {
-                truncatedText = cutFromEnd 
-                    ? '…' + originalText.slice(-maxLength) 
-                    : originalText.substring(0, maxLength) + '…';
+                truncatedText = cutFromEnd
+                    ? "…" + originalText.slice(-maxLength)
+                    : originalText.substring(0, maxLength) + "…";
 
-                element.setAttribute('data-full-text', originalText); // Volltext speichern
-                element.innerHTML = `<span class="truncated-text">${truncatedText}</span>`; // Nur sichtbaren Teil kürzen
+                element.attr("data-search", originalText);
+                console.log("Set data-search:", originalText);
 
-                element.addEventListener('mouseenter', function () {
-                    this.innerHTML = `<span class="full-text">${originalText}</span>`; // Originaltext anzeigen
-                });
+                if (link.length > 0) {
+                    link.text(truncatedText);
+                } else {
+                    element.html(`<span class="truncated-text">${truncatedText}</span>`);
+                }
 
-                element.addEventListener('mouseleave', function () {
-                    this.innerHTML = `<span class="truncated-text">${truncatedText}</span>`; // Wieder gekürzt anzeigen
-                });
+                function formatWithLineBreaks(text, length) {
+                    return text.replace(new RegExp(`(.{${length}})`, "g"), "$1\n");
+                }
+
+                element.hover(
+                    function () {
+                        let expandedText = formatWithLineBreaks(originalText, maxLength);
+
+                        if (link.length > 0) {
+                            link.text(expandedText);
+                        } else {
+                            $(this).html(`<span class="full-text">${expandedText}</span>`);
+                        }
+
+                        $(this).css("white-space", "pre-line"); // Make line breaks visible
+                    },
+                    function () {
+                        if (link.length > 0) {
+                            link.text(truncatedText);
+                        } else {
+                            $(this).html(`<span class="truncated-text">${truncatedText}</span>`);
+                        }
+
+                        $(this).css("white-space", "nowrap");
+                    }
+                );
             }
-        }
-    });
-}
+        });
+    }
 
-    // Wende die Methode auf die entsprechenden Spalten an
-    applyTextShortening('.description', 36);  
-    applyTextShortening('.id', 8, true);  
-    applyTextShortening('.source', 20, true);  
-
-    // Funktion zur Initialisierung von DataTables (abhängig von full-view)
     function initializeDataTable(isFullView) {
-        if ($.fn.DataTable.isDataTable('#transactionsTable')) {
-            $('#transactionsTable').DataTable().destroy(); // Entferne bestehende Instanz
+        console.log("Initializing DataTable, fullView:", isFullView);
+
+        if ($.fn.DataTable.isDataTable("#transactionsTable")) {
+            console.log("Destroying existing DataTable instance...");
+            $("#transactionsTable").DataTable().destroy();
         }
 
-        $('#transactionsTable').DataTable({
-            responsive: !isFullView, // Responsive NUR, wenn nicht Full View
-            scrollX: isFullView, // Scrollen aktivieren, wenn Full View an ist
-            order: [[0, "desc"]],
+        let table = $("#transactionsTable").DataTable({
+            responsive: !isFullView,
+            scrollX: isFullView,
+            order: [[1, "asc"]], // Sorting by the 2nd column in ascending order
             pageLength: 25,
             lengthMenu: [
                 [10, 25, 50, 100, -1],
                 [10, 25, 50, 100, "All"]
             ]
         });
+
+        console.log("DataTable initialized.");
+
+        $("#transactionsTable tfoot input").on("keyup change", function () {
+            let colIndex = $(this).parent().index();
+            let searchTerm = $(this).val().toLowerCase();
+
+            console.log(`Filtering column ${colIndex} with term: ${searchTerm}`);
+
+            table.column(colIndex).search(searchTerm, false, false).draw();
+        });
+
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            let searchInput = $("#transactionsTable_filter input").val().toLowerCase();
+            let row = $("#transactionsTable tbody tr").eq(dataIndex);
+            let match = false;
+
+            console.log("Global search input:", searchInput);
+
+            row.find("td").each(function () {
+                let searchValue = $(this).attr("data-search") || $(this).text();
+                console.log("Checking row value:", searchValue);
+
+                if (searchValue.toLowerCase().includes(searchInput)) {
+                    console.log("Match found!");
+                    match = true;
+                    return false;
+                }
+            });
+
+            return match;
+        });
+
+        $("#transactionsTable_filter input").off("keyup change").on("keyup change", function () {
+            console.log("Search updated, redrawing table...");
+            table.draw();
+        });
     }
 
-    // Starte die DataTable normal (responsive aktiviert)
+    console.log("Applying text shortening...");
+    applyTextShortening(".description", 36);
+    applyTextShortening(".id", 8, true);
+    applyTextShortening(".source", 20, true);
+
     initializeDataTable(false);
 
-    // Reset Filters button
-    $('#resetFilters').on('click', function () {
-        $('#transactionsTable').DataTable().columns().search('').draw();
-        $('#transactionsTable tfoot input').val('');
+    $("#resetFilters").on("click", function () {
+        console.log("Resetting filters...");
+        $("#transactionsTable").DataTable().search("").columns().search("").draw();
+        $("#transactionsTable tfoot input").val("");
     });
 
-    // Toggle Full View
-    $('#toggleFullView').on('click', function () {
-        $('body').toggleClass('full-view');
-
-        let isFullView = $('body').hasClass('full-view');
-        initializeDataTable(isFullView); // Re-initialisiere DataTable basierend auf Modus
+    $("#toggleFullView").on("click", function () {
+        $("body").toggleClass("full-view");
+        let isFullView = $("body").hasClass("full-view");
+        console.log("Toggling Full View:", isFullView);
+        initializeDataTable(isFullView);
     });
+
+    console.log("DataTable active:", $.fn.DataTable.isDataTable("#transactionsTable"));
 });
+
+
   </script>
 </body>
 </html>
