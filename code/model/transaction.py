@@ -16,14 +16,14 @@ class Transaction:
         self.finance_institute              = None                          # The finance institute which served the transaction
         self.currency                       = None                          # Obligatoric    
         self.invoice_id                     = ""                            # Optional: The invoice number   
-        self.transaction_date               = None                          # Obligatoric: The date when the transaction was done
+        self.date               = None                          # Obligatoric: The date when the transaction was done
         self.transaction_id                 = None                          # Obligatoric: The unique identifier of the transaction
         
     def setTransactionDate(self,date_string):
         date_string = date_string.strip().replace('"', '')
         for fmt in ("%d.%m.%Y", "%d.%m.%y"):
             try:
-                self.transaction_date = datetime.strptime(date_string, fmt).strftime("%Y-%m-%d")
+                self.date = datetime.strptime(date_string, fmt).strftime("%Y-%m-%d")
                 return
             except ValueError:
                 continue
@@ -72,7 +72,7 @@ class Transaction:
             "source_document":  str,    # source_document should be a string (file path)
             "finance_institute":            str,    # finance_institute can be either a string
             "currency":                     str,    # currency should be a string (e.g., 'EUR', 'USD')
-            "transaction_date":             str,    # transaction_date can be either a string (date)
+            "date":             str,    # date can be either a string (date)
             "transaction_id":               str,    # id can be either a string
             "description":                  str,    # description should be a string (optional)
             "invoice_id":                   str,    # invoice should be a string (optional)
@@ -90,7 +90,7 @@ class Transaction:
             "transaction_id":               self.transaction_id,
             "finance_institute":            self.finance_institute,
             "account_id":                   self.account_id,
-            "transaction_date":             self.transaction_date,
+            "date":             self.date,
             "value":                        self.value,
             "currency":                     self.currency,
             "sender":                       self.getSender(),

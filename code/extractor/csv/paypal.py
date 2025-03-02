@@ -15,10 +15,10 @@ class PayPalCSVExtractor(CSVExtractor):
                 return []
             for row in reader:
                 try:
-                    transaction.transaction_date = datetime.strptime(row.get('\ufeff"Datum"', ""), "%d.%m.%Y").strftime("%Y-%m-%d").strip()
+                    transaction.date = datetime.strptime(row.get('\ufeff"Datum"', ""), "%d.%m.%Y").strftime("%Y-%m-%d").strip()
                 except Exception as e:
                     self.logger.error(f"Date conversion error in {self.source_document}: {e}")
-                    transaction.transaction_date = row.get('\ufeff"Datum"', "").strip()
+                    transaction.date = row.get('\ufeff"Datum"', "").strip()
                 transaction.transaction_partner     = row.get("Absender E-Mail-Adresse", "").strip() + row.get("Name", "").strip()
                 transaction.transaction_id          = row.get("Transaktionscode", "").strip()
                 transaction.description             = row.get("Beschreibung", "").strip()
