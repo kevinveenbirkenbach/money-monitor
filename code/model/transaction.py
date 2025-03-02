@@ -3,10 +3,11 @@ import base64
 from ..logger import Logger
 from datetime import datetime
 from code.model.account import Account
+from .invoice import Invoice
 
 class Transaction:
     """Represents a single transaction."""
-    def __init__(self, logger:Logger, source:str, partner:Account=None, owner:Account = None):
+    def __init__(self, logger:Logger, source:str, partner:Account=None, owner:Account = None, invoice: Invoice = None):
         self.logger             = logger
         self.description        = ""                                # Optional
         self.value              = None                              # Needs to be defined type integer
@@ -14,7 +15,7 @@ class Transaction:
         self.partner            = partner or Account(self.logger)   # Optional: The transaction partner
         self.source             = source                            # Obligatoric: File in which the transaction was found
         self.currency           = None                              # Obligatoric    
-        self.invoice_id         = ""                                # Optional: The invoice number   
+        self.invoice            = invoice or Invoice(self.logger)   # Optional: The linked invoice
         self.date               = None                              # Obligatoric: The date when the transaction was done
         self.id                 = None                              # Obligatoric: The unique identifier of the transaction
         
@@ -74,7 +75,7 @@ class Transaction:
             "date":         str,        # date can be either a string (date)
             "id":           str,        # id can be either a string
             "description":  str,        # description should be a string (optional)
-            "invoice_id":   str,        # invoice should be a string (optional)
+            "invoice":      Invoice,    # invoice should be a string (optional)
         }
         
         for var_name, expected_type in validations.items():
@@ -82,7 +83,7 @@ class Transaction:
             if not isinstance(var_value, expected_type):
                 self.logger.error(f"{var_name} should be of type {expected_type.__name__}\n Type <<{type(var_value)}>> isn't correct.")
                 return False         
-        return self.owner.isValid(), self.partner.isValid()
+        return self.owner.isValid() and self.partner.isValid() and self.invoice.isValid()
 
     def getDictionary(self)-> dict:
         dictionary = {
@@ -93,8 +94,7 @@ class Transaction:
             "sender":          self.getSender() and self.getSender().getIdentity(),
             "receiver":        self.getReceiver() and self.getReceiver().getIdentity(),
             "description":     self.description,
-            "source": self.source,
-            "invoice_id":      self.invoice_id,
+            "source":          self.source,
         }
         for key, value in self.partner.getDictionary().items():
             dictionary["partner_" + key]  = value        
@@ -102,11 +102,14 @@ class Transaction:
         for key, value in self.owner.getDictionary().items():
             dictionary["owner_" + key]  = value
         
+        for key, value in self.invoice.getDictionary().items():
+            dictionary["invoice_" + key]  = value
+        
         return dictionary
 
-    def __str__(self):
+    def __str__(self)->str:
         output = ""
-        data = self.getDictionary()
+        data = self.__dict__
         for key, value in data.items():
             value_str = value if value is not None else "N/A"
             output += f"{key.replace('_', ' ').title()}: {value_str} \n"

@@ -9,5 +9,5 @@ class Exporter:
 
     def get_data_as_dicts(self):
         return [
-            t.getDictionary() for t in self.transactions
+            t.__dict__ for t in self.transactions
         ]

@@ -67,7 +67,6 @@ class TransactionProcessor:
 
         self._filter_by_date();
 
-        self.logger.debug(self.all_transactions)
         # Export logic: iterate over all specified export types
         for fmt in self.export_types:
             ext = f".{fmt}"

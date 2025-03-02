@@ -49,10 +49,6 @@ class DKBCSVExtractor(CSVExtractor):
                 self.logger, 
                 id=rows[0][1].strip().replace('"', ''), 
                 institute="DKB")
-            partner = Account(
-                self.logger,
-                id=data.get("IBAN", "").strip()
-                )
             if transaction.value > 0:
                 transaction.owner.name = data.get("Zahlungsempfänger*in", "").strip()
                 transaction.partner.name = data.get("Zahlungspflichtige*r", "").strip()
@@ -63,9 +59,12 @@ class DKBCSVExtractor(CSVExtractor):
                 transaction.partner.name = data.get("Zahlungsempfänger*in", "").strip()
                 transaction.setSender(transaction.owner)
                 transaction.setReceiver(transaction.partner)
+            transaction.partner.id = data.get("IBAN", "").strip()
             transaction.currency = "EUR"
             transaction.description = data.get("Verwendungszweck", "").strip()
-            transaction.invoice_id = data.get("Kundenreferenz", "").strip()
+            transaction.invoice.customer_reference = data.get("Kundenreferenz", "").strip()
+            transaction.invoice.mandate_reference = data.get("Mandatsreferenz", "").strip()
+            transaction.invoice.creditor_id = data.get("Gläubiger-ID", "").strip()
             transaction.setTransactionDate(data.get("Buchungsdatum", ""))
             self.appendTransaction(transaction)
         return self.transactions
