@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Transactions Debugging - Clear Filter on Empty Input</title>
+  <title>Transactions</title>
   <!-- Bootstrap CSS -->
   <link 
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" 
@@ -31,6 +31,7 @@
       min-width: 120px;
       white-space: nowrap;
     }
+    /* Styles for truncated text cells */
     .description {
       white-space: nowrap;
       overflow: hidden;
@@ -61,7 +62,7 @@
 
 <body>
   <main class="container my-4">
-    <h1 class="mb-4">Transactions Debugging - Clear Filters</h1>
+    <h1 class="mb-4">Transactions</h1>
 
     {% if filter_info %}
       <p class="text-muted"><small>{{ filter_info }}</small></p>
@@ -144,6 +145,7 @@
                     {% endif %}
                   </td>
                 {% else %}
+                  <!-- Add a class matching the header for potential text shortening -->
                   <td class="{{ header }}">{{ cell_value }}</td>
                 {% endif %}
               {% endfor %}
@@ -194,7 +196,61 @@
 
   <script>
     $(document).ready(function () {
-      console.log("Initializing debugging script for clearing filters...");
+      console.log("Initializing debugging script for clearing filters & text shortening...");
+
+      // ************************************************************
+      // Function: applyTextShortening
+      // Purpose: Truncate long text while keeping the full text available
+      //          for search. On hover, the full text is shown with line breaks.
+      // ************************************************************
+      function applyTextShortening(selector, maxLength, cutFromEnd = false) {
+        $(selector).each(function () {
+          let element = $(this);
+          let link = element.find("a");
+          let originalText = (link.length > 0) ? link.text().trim() : element.text().trim();
+          console.log("applyTextShortening: Processing element", element, "Original text:", originalText);
+
+          if (originalText.length > maxLength) {
+            let truncatedText = cutFromEnd 
+              ? "…" + originalText.slice(-maxLength) 
+              : originalText.substring(0, maxLength) + "…";
+            
+            // Store full text in data-search attribute for filtering purposes.
+            element.attr("data-search", originalText);
+            
+            if (link.length > 0) {
+              link.text(truncatedText);
+            } else {
+              element.html('<span class="truncated-text">' + truncatedText + '</span>');
+            }
+
+            // Helper function to insert line breaks for the expanded view.
+            function formatWithLineBreaks(text, length) {
+              return text.replace(new RegExp("(.{" + length + "})", "g"), "$1\n");
+            }
+
+            element.hover(
+              function () {
+                let expandedText = formatWithLineBreaks(originalText, maxLength);
+                if (link.length > 0) {
+                  link.text(expandedText);
+                } else {
+                  $(this).html('<span class="full-text">' + expandedText + '</span>');
+                }
+                $(this).css("white-space", "pre-line");
+              },
+              function () {
+                if (link.length > 0) {
+                  link.text(truncatedText);
+                } else {
+                  $(this).html('<span class="truncated-text">' + truncatedText + '</span>');
+                }
+                $(this).css("white-space", "nowrap");
+              }
+            );
+          }
+        });
+      }
 
       // Replace footer header text with input elements for column filtering.
       $("#transactionsTable tfoot th").each(function () {
@@ -202,7 +258,7 @@
         $(this).html('<input type="text" placeholder="Search ' + title + '" class="form-control form-control-sm" />');
       });
 
-      // Initialize the DataTable without a custom global search extension.
+      // Initialize the DataTable.
       function initializeDataTable(isFullView) {
         console.log("Initializing DataTable, fullView:", isFullView);
 
@@ -221,7 +277,7 @@
             [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, -1],
             [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, "All"]
           ],
-          // Set up column filtering: if few unique values, use dropdown; otherwise, text input.
+          // Set up column filtering.
           initComplete: function () {
             this.api().columns().every(function () {
               var column = this;
@@ -239,11 +295,9 @@
                   select.append("<option value='" + d + "'>" + d + "</option>");
                 });
               } else {
-                // For text input, listen for input events.
                 $("input", column.footer()).on("input", function () {
                   var val = $(this).val();
                   console.log("Column", column.index(), "input event. Value:", val);
-                  // If input is empty, clear the column search.
                   if (val === "") {
                     column.search('').draw();
                     console.log("Column", column.index(), "search cleared.");
@@ -256,11 +310,10 @@
           }
         });
 
-        // For the default global search, listen to the built-in input.
+        // Global search: use the built-in DataTables global search.
         $("#transactionsTable_filter input").off("input").on("input", function () {
           var val = $(this).val();
           console.log("Global search input event. Value:", val);
-          // If empty, clear the global search.
           if (val === "") {
             table.search('').draw();
             console.log("Global search cleared.");
@@ -298,6 +351,14 @@
       });
 
       console.log("DataTable active:", $.fn.DataTable.isDataTable("#transactionsTable"));
+
+      // ************************************************************
+      // Apply text shortening to designated cells.
+      // You can adjust the selectors and max lengths as needed.
+      // ************************************************************
+      applyTextShortening(".description", 36);
+      applyTextShortening(".id", 8, true);
+      applyTextShortening(".source", 20, true);
     });
   </script>
 </body>
