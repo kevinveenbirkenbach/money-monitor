@@ -40,8 +40,8 @@ class DKBCSVExtractor(CSVExtractor):
             data                                    =   dict(zip(headers, row))
             transaction                             =   Transaction(self.logger,self.source_document);
             transaction.value                       =   self.parse_amount(data.get("Betrag (€)", "0"))
-            transaction.owner                       =   OwnerAccount(id=giro_iban,institute="DKB")
-            partner                                 =   Account(id=data.get("IBAN", "").strip())
+            transaction.owner                       =   OwnerAccount(self.logger,id=giro_iban,institute="DKB")
+            partner                                 =   Account(self.logger,id=data.get("IBAN", "").strip())
             if transaction.value > 0:
                 transaction.owner.name              =   data.get("Zahlungsempfänger*in", "").strip()
                 transaction.setReceiver(transaction.owner)

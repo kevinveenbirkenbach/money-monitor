@@ -1,5 +1,8 @@
+from code.logger import Logger
+
 class Account:
-    def __init__(self, id=None, name=None, institute=None):
+    def __init__(self, logger:Logger, id=None, name=None, institute=None):
+        self.logger = logger        # Logger class
         self.id = id                # ID of the account like IBAN
         self.name = name            # Owner of the Account like Max Mustermann
         self.institute = institute  # The institute the account belongs to  
@@ -15,8 +18,15 @@ class Account:
             "institute":    self.institute,
         }
         
-    def getIdentification(self)-> str:
-        return str(str(self.id) + str(self.name) + str(self.institute))[:18]
+    def getIdentity(self)-> str:
+        if self.id:
+            return self.id
+        if self.name:
+            return self.name
+        if self.institute:
+            return self.institute
+        self.logger.error("This account doesn't have an identity.")
+        return ""
     
 class OwnerAccount(Account):
     # Verifies if accout is valid

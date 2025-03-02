@@ -31,6 +31,24 @@
       min-width: 120px;
       white-space: nowrap;
     }
+    .description {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      /*max-width: 100px; /* Anpassen je nach Layout */
+      /*display: inline-block;
+      cursor: pointer; /* Zeigt an, dass man interagieren kann */
+    }
+
+    .description:hover {
+        white-space: pre-line;
+        max-width: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 5px;
+        z-index: 100;
+    }
   </style>
 </head>
 
@@ -126,10 +144,18 @@
                 {% elif header == "source_document" %}
                   <td>
                     {% if cell_value %}
-                      <a href="{{ cell_value }}">[...]{{ cell_value[-14:] }}</a>
+                      <a href="{{ cell_value }}">...{{ cell_value[-14:] }}</a>
                     {% else %}
                       <span class="text-danger">No Document</span>
                     {% endif %}
+                  </td>
+                {% elif header == "id" %}
+                  <td>
+                    {{ cell_value[-7:] }}
+                  </td>
+                {% elif header == "description" %}
+                  <td class="description">
+                    {{ cell_value }}
                   </td>
                 {% else %}
                   <td>{{ cell_value }}</td>
@@ -177,6 +203,24 @@
 
   <script>
     $(document).ready(function() {
+
+      document.querySelectorAll('.description').forEach(element => {
+          let originalText = element.innerText.trim(); // Originaltext speichern
+          let truncatedText = originalText.substring(0, 5) + '…'; // Erste n Zeichen extrahieren
+
+          element.setAttribute('data-full-text', originalText); // Volltext als data-Attribut speichern
+          element.innerText = truncatedText; // Nur die gekürzte Version anzeigen
+
+          // Hover-Event für die Beschreibung
+          element.addEventListener('mouseenter', function () {
+              this.innerText = this.getAttribute('data-full-text'); // Originaltext anzeigen
+          });
+
+          element.addEventListener('mouseleave', function () {
+              this.innerText = truncatedText; // Gekürzten Text wiederherstellen
+          });
+      });
+
       // Initialize DataTable with Responsive
       var table = $('#transactionsTable').DataTable({
         responsive: {

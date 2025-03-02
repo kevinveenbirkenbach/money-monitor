@@ -6,17 +6,17 @@ from code.model.account import Account
 
 class Transaction:
     """Represents a single transaction."""
-    def __init__(self, logger:Logger, source_document:str, partner:Account=Account(), owner:Account = None):
-        self.logger                         = logger
-        self.description                    = ""                # Optional
-        self.value                          = None              # Needs to be defined type integer
-        self.owner                          = owner             # Owner of this transaction
-        self.partner                        = partner              # Optional: The transaction partner
-        self.source_document                = source_document   # Obligatoric: File in which the transaction was found
-        self.currency                       = None              # Obligatoric    
-        self.invoice_id                     = ""                # Optional: The invoice number   
-        self.date               = None                          # Obligatoric: The date when the transaction was done
-        self.id                 = None              # Obligatoric: The unique identifier of the transaction
+    def __init__(self, logger:Logger, source_document:str, partner:Account=None, owner:Account = None):
+        self.logger             = logger
+        self.description        = ""                                # Optional
+        self.value              = None                              # Needs to be defined type integer
+        self.owner              = owner                             # Owner of this transaction
+        self.partner            = partner or Account(self.logger)   # Optional: The transaction partner
+        self.source_document    = source_document                   # Obligatoric: File in which the transaction was found
+        self.currency           = None                              # Obligatoric    
+        self.invoice_id         = ""                                # Optional: The invoice number   
+        self.date               = None                              # Obligatoric: The date when the transaction was done
+        self.id                 = None                              # Obligatoric: The unique identifier of the transaction
         
     def setTransactionDate(self,date_string):
         date_string = date_string.strip().replace('"', '')
@@ -90,8 +90,8 @@ class Transaction:
             "date":            self.date,
             "currency":        self.currency,
             "value":           self.value,
-            "sender":          self.getSender() and self.getSender().getIdentification(),
-            "receiver":        self.getReceiver() and self.getReceiver().getIdentification(),
+            "sender":          self.getSender() and self.getSender().getIdentity(),
+            "receiver":        self.getReceiver() and self.getReceiver().getIdentity(),
             "description":     self.description,
             "source_document": self.source_document,
             "invoice_id":      self.invoice_id,
