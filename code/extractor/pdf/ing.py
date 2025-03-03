@@ -14,26 +14,24 @@ class IngPDFExtractor(PDFExtractor):
       - Second line: Valuta date, optional extra text appended to description
       - Possible subsequent lines with "Mandat: ..." or "Referenz: ..."
 
+    Example block:
+
+      02.01.2023 Gutschrift John Doe 38,45
+      30.12.2022 Cleaning
+
+      02.01.2023 Lastschrift PayPal ... -70,99
+      02.01.2023 1024397ABCD PP.2617.PP ...
+      Mandat: QWERTY1234
+      Referenz: 1024397ABCD
     """
 
-    # ----------------------------------------------------------
-
-    # ----------------------------------------------------------
-    # group(1): Buchung date (dd.mm.yyyy)
-    # group(2): Description (any text until last space group)
-    # group(3): Amount (possibly negative, e.g. -70,99)
-    # Group(1) = date, Group(2) = description, Group(3) = amount, 
+    # Regex to capture one date, then some text, then an amount, 
     # then optionally allow leftover text we can ignore.
     booking_line_pattern = re.compile(
         r"^(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2}))\s*(.*)?$"
     )
 
-    # ----------------------------------------------------------
-    # 2) CHANGED: Regex to capture a line with Valuta date + leftover text
-    #    e.g.: "30.12.2022 Cleaning"
-    # ----------------------------------------------------------
-    # group(1): Valuta date (dd.mm.yyyy)
-    # group(2): Any leftover text appended to description
+    # Regex to capture a line with Valuta date + leftover text
     valuta_line_pattern = re.compile(
         r"^(\d{2}\.\d{2}\.\d{4})(?:\s+(.*))?$"
     )
@@ -43,15 +41,12 @@ class IngPDFExtractor(PDFExtractor):
     referenz_pattern = re.compile(r"^Referenz:\s*(\S+)")
 
     def extract_transactions(self):
-        # Attempt to open and read the PDF
         with pdfplumber.open(self.source) as pdf:
             if not pdf.pages:
                 self.logger.warning(f"No pages found in {self.source}")
                 return []
 
-            # ----------------------------------------------------------
-            # 3) CHANGED: We first read the entire PDF text to find the IBAN
-            # ----------------------------------------------------------
+            # Read the entire PDF text to find the IBAN
             full_text = ""
             for page in pdf.pages:
                 page_text = page.extract_text() or ""
@@ -61,15 +56,13 @@ class IngPDFExtractor(PDFExtractor):
             iban_match = re.search(r"IBAN\s+(DE[0-9\s]{20,30})", full_text)
             if iban_match:
                 raw_iban = iban_match.group(1)
-                account_iban = re.sub(r"\s+", "", raw_iban)  # e.g. "DE86500105175426768795"
+                account_iban = re.sub(r"\s+", "", raw_iban)  # e.g. "DE12345678901234567890"
                 if len(account_iban) != 22:
                     self.logger.warning(f"Found IBAN but length != 22: {account_iban}")
             else:
                 account_iban = None
 
-            # ----------------------------------------------------------
-            # 4) CHANGED: Now parse line-by-line for each page
-            # ----------------------------------------------------------
+            # Now parse line-by-line for each page
             for page in pdf.pages:
                 lines = page.extract_text().splitlines()
                 i = 0
@@ -80,8 +73,8 @@ class IngPDFExtractor(PDFExtractor):
                     if booking_match:
                         # We found a "Buchung" line with date, description, amount
                         buchung_date_str = booking_match.group(1)
-                        description      = booking_match.group(2).strip()
-                        amount_str       = booking_match.group(3).replace(".", "").replace(",", ".")
+                        description = booking_match.group(2).strip()
+                        amount_str = booking_match.group(3).replace(".", "").replace(",", ".")
 
                         # Create Transaction
                         transaction = Transaction(
@@ -94,7 +87,7 @@ class IngPDFExtractor(PDFExtractor):
                             id=account_iban,
                             institute="ING"
                         )
-                        # Invoice object
+                        # Create an empty Invoice object
                         transaction.invoice = Invoice()
 
                         # Set the booking date
@@ -124,10 +117,7 @@ class IngPDFExtractor(PDFExtractor):
                             transaction.setSender(transaction.partner)
                             transaction.setReceiver(transaction.owner)
 
-                        # ----------------------------------------------------------
-                        # 5) CHANGED: Check the NEXT line for Valuta date
-                        #    e.g. "30.12.2022 Cleaning"
-                        # ----------------------------------------------------------
+                        # Check the NEXT line for Valuta date, e.g. "30.12.2022 Cleaning"
                         j = i + 1
                         if j < len(lines):
                             next_line = lines[j].strip()
@@ -140,13 +130,10 @@ class IngPDFExtractor(PDFExtractor):
                                 # If leftover text after the date, append to description
                                 leftover_text = valuta_match.group(2)
                                 if leftover_text:
-                                    # Add a space + leftover to transaction.description
                                     transaction.description += f" {leftover_text}"
                                 j += 1
 
-                        # ----------------------------------------------------------
-                        # 6) CHANGED: Additional lines for Mandat / Referenz
-                        # ----------------------------------------------------------
+                        # Additional lines for Mandat / Referenz
                         while j < len(lines):
                             sub_line = lines[j].strip()
 
