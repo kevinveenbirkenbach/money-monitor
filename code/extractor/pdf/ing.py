@@ -6,6 +6,7 @@ from code.extractor.pdf.ing_helpers.booking_line_parser import BookingLineParser
 from code.extractor.pdf.ing_helpers.valuta_line_parser import ValutaLineParser
 from code.extractor.pdf.ing_helpers.additional_info_parser import AdditionalInfoParser
 from code.extractor.pdf.ing_helpers.transaction_builder import TransactionBuilder
+from code.extractor.pdf.ing_helpers.iban_parser import IBANParser
 from .base import PDFExtractor  # Basisklasse importieren
 
 class IngPDFExtractor(PDFExtractor):
@@ -14,12 +15,13 @@ class IngPDFExtractor(PDFExtractor):
     Verantwortlich für das Aufteilen der PDF-Seiten in Zeilen und das Verwenden der
     kleineren Parser-Klassen sowie des TransactionBuilders zur Erstellung von Transaction-Objekten.
     """
-    def __init__(self, source:str, logger:Logger, config:yaml):
+    def __init__(self, source: str, logger: Logger, config: yaml):
         super().__init__(source, logger, config)
         self.transactions = []
         self.booking_parser = BookingLineParser()
         self.valuta_parser = ValutaLineParser()
         self.additional_parser = AdditionalInfoParser()
+        self.iban_parser = IBANParser()
 
     def extract_transactions(self):
         with pdfplumber.open(self.source) as pdf:
@@ -33,14 +35,10 @@ class IngPDFExtractor(PDFExtractor):
                 page_text = page.extract_text() or ""
                 full_text += page_text + "\n"
 
-            # IBAN extrahieren
-            iban_match = re.search(r"IBAN\s+(DE[0-9\s]{20,30})", full_text)
-            account_iban = None
-            if iban_match:
-                raw_iban = iban_match.group(1)
-                account_iban = re.sub(r"\s+", "", raw_iban)
-                if len(account_iban) != 22:
-                    self.logger.warning(f"Found IBAN but length != 22: {account_iban}")
+            # IBAN extrahieren mithilfe des IBAN-Parsers
+            account_iban = self.iban_parser.extract(full_text)
+            if account_iban is None:
+                self.logger.warning(f"IBAN konnte nicht korrekt extrahiert werden aus {self.source}")
 
             # Transaktionen seitenweise parsen
             builder = TransactionBuilder(self.logger, self.source, account_iban)
