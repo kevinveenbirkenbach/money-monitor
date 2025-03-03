@@ -50,8 +50,7 @@ class BarclaysTransactionBuilder:
             return None
         
         transaction.currency = "EUR"
-        # Typ (Lastschrift/Gutschrift) anhand des Vorzeichens bestimmen
-        transaction.type = "Lastschrift" if transaction.value < 0 else "Gutschrift"
+        transaction.type = "Abbuchung" if transaction.value < 0 else "Gutschrift"
         
         # Setze das Medium, falls Card-Informationen vorhanden sind
         transaction.medium = "Visa" if booking_data.get("card_country") else None
