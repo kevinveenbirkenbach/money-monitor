@@ -48,10 +48,10 @@ class PayPalCSVExtractor(CSVExtractor):
                 # Convert 'Netto' to float
                 net_str = row.get("Netto", "").strip().replace(",", ".")
                 try:
-                    transaction.value = float(net_str) if net_str else 0.0
+                    transaction.setValue(net_str)
                 except ValueError:
                     self.logger.error(f"Error parsing net amount '{net_str}' in {self.source}")
-                    transaction.value = 0.0
+                    transaction.setValue(0.0)
 
                 # Optional invoice number
                 # transaction.invoice is an Invoice object; store the "Rechnungsnummer" in its id

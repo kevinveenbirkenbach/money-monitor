@@ -26,7 +26,7 @@ class TransactionBuilder:
 
         # Betrag konvertieren
         try:
-            transaction.value = float(booking_data["amount_str"])
+            transaction.setValue(booking_data["amount_str"])
         except ValueError as e:
             self.logger.error(
                 f"Error converting amount '{booking_data['amount_str']}' in source {self.source}: {e}"

@@ -22,7 +22,7 @@ class Transaction:
         self.logger                 = logger
         self.description            = ""                                # Optional
         self.value                  = None                              # Needs to be defined type integer
-        self.owner                  = owner                             # Owner of this transaction
+        self.owner                  = owner or OwnerAccount(self.logger)# Owner of this transaction
         self.partner                = partner or Account(self.logger)   # Optional: The transaction partner
         self.source                 = source                            # Obligatoric: File in which the transaction was found
         self.currency               = None                              # Obligatoric    
@@ -59,7 +59,7 @@ class Transaction:
         date_string = date_string.strip().replace('"', '')
 
         # Attempt parsing with multiple date formats
-        for fmt in ("%d.%m.%Y", "%d.%m.%y"):
+        for fmt in ("%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d"):
             try:
                 # Parse the string into a datetime, then convert to a date object
                 parsed_date = datetime.strptime(date_string, fmt).date()
@@ -68,9 +68,6 @@ class Transaction:
             except ValueError:
                 continue
 
-        # If parsing failed for all formats, log an error
-        self.logger.error(f"Invalid date format '{date_string}' in file {self.source}.")
-    
         # If parsing failed for all formats, log an error
         self.logger.error(f"Invalid date format '{date_string}' in file {self.source}.")
 
@@ -151,6 +148,9 @@ class Transaction:
             return self.owner
         return None;
     
+    def setValue(self,value):
+        self.value = float(value)
+    
     def isValid(self):
         # Dictionary with variable names as keys and expected types as values
         validations = {
@@ -168,9 +168,18 @@ class Transaction:
         for var_name, expected_type in validations.items():
             var_value = getattr(self, var_name, None)  # Get the value of the attribute dynamically
             if not isinstance(var_value, expected_type):
-                self.logger.error(f"{var_name} should be of type {expected_type.__name__}\n Type <<{type(var_value)}>> isn't correct.")
-                return False         
-        return self.owner.isValid() and self.partner.isValid() and self.invoice.isValid()
+                self.logger.error(f"{var_name} should be of type {expected_type.__name__}\n Type <<{type(var_value)}>> witch value {var_value} isn't correct.")
+                return False
+        if not self.owner.isValid():
+            self.logger.error("Owner isn't valid!")
+            return False
+        if not self.partner.isValid():
+            self.logger.error("Partner isn't valid!")
+            return False 
+        if not self.invoice.isValid():
+            self.logger.error("Invoice isn't valid!")
+            return False
+        return True
     
 
     def _get_time_with_tz(self)->str:

@@ -43,7 +43,7 @@ class DKBCSVExtractor(CSVExtractor):
                 continue
             data = dict(zip(headers, row))
             transaction = Transaction(self.logger, self.source)
-            transaction.value = self.parse_amount(data.get("Betrag (€)", "0"))
+            transaction.setValue(self.parse_amount(data.get("Betrag (€)", "0")))
             # Set the owner account using the extracted Giro IBAN.
             transaction.owner = OwnerAccount(
                 self.logger, 

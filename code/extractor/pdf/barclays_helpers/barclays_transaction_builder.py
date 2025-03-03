@@ -42,7 +42,7 @@ class BarclaysTransactionBuilder:
         # Falls kein Komma vorhanden ist, gehen wir davon aus, dass der Punkt bereits korrekt ist.
 
         try:
-            transaction.value = float(amount_str)
+            transaction.setValue(amount_str)
         except ValueError as e:
             self.logger.error(
                 f"Error converting amount '{booking_data['amount_str']}' in source {self.source}: {e}"

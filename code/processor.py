@@ -72,6 +72,10 @@ class TransactionProcessor:
                 self.all_transactions.extend(transactions)
 
         self._filter_by_date();
+        
+        for transaction in self.all_transactions:
+            if not transaction.isValid():
+                self.logger.error(f"Unvalid transaction: {transaction}");
 
         # Export logic: iterate over all specified export types
         for fmt in self.export_types:
