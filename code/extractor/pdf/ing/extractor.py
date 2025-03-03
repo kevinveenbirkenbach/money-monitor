@@ -7,7 +7,8 @@ from .valuta_line_parser import ValutaLineParser
 from .additional_info_parser import AdditionalInfoParser
 from .transaction_builder import TransactionBuilder
 from .iban_parser import IBANParser
-from ..base import PDFExtractor  # Basisklasse importieren
+from ..base import PDFExtractor
+from code.converter.pdf import PDFConverter
 
 class IngPDFExtractor(PDFExtractor):
     """
@@ -15,8 +16,8 @@ class IngPDFExtractor(PDFExtractor):
     Verantwortlich für das Aufteilen der PDF-Seiten in Zeilen und das Verwenden der
     kleineren Parser-Klassen sowie des TransactionBuilders zur Erstellung von Transaction-Objekten.
     """
-    def __init__(self, source: str, logger: Logger, config: yaml):
-        super().__init__(source, logger, config)
+    def __init__(self, source: str, logger: Logger, config: yaml, pdf_converter:PDFConverter):
+        super().__init__(source, logger, config, pdf_converter)
         self.transactions = []
         self.booking_parser = BookingLineParser()
         self.valuta_parser = ValutaLineParser()

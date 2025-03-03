@@ -90,7 +90,7 @@ class ExtractorFactory:
                     module_name = f"code.extractor.pdf.{name.lower()}.extractor"
                     class_name = f"{name}PDFExtractor"
                     self.logger.debug(f"Using extractor {module_name}.{class_name} for {file_path}")        
-                    return self._instantiate_extractor(module_name, class_name, file_path)
+                    return self._instantiate_extractor(module_name, class_name, file_path, pdf_converter)
 
             self.logger.info(f"No matching PDF extractor found for '{file_path}'.")
             return None
@@ -100,7 +100,7 @@ class ExtractorFactory:
             self.logger.info(f"Unsupported file extension '{ext}' for {file_path}.")
             return None
 
-    def _instantiate_extractor(self, module_name, class_name, file_path):
+    def _instantiate_extractor(self, module_name, class_name, file_path, pdf_converter):
         """
         Dynamically imports the extractor module and instantiates the extractor class.
         """
@@ -109,7 +109,7 @@ class ExtractorFactory:
             module = importlib.import_module(f"{module_name}")
             extractor_class = getattr(module, class_name)
             # If your extractor needs a logger, pass it here as well
-            return extractor_class(file_path, self.logger, config=self.config)
+            return extractor_class(file_path, logger=self.logger, config=self.config, pdf_converter=pdf_converter)
         except Exception as e:
             self.logger.error(f"Failed to instantiate extractor {class_name} from {module_name}: {e}")
             return None

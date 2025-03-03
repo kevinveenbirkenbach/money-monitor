@@ -8,11 +8,14 @@ from .amount_parser import AmountParser
 from .balance_parser import BalanceParser
 from .date_parser import DateParser
 from .transaction_parser import TransactionParser
+from code.converter.pdf import PDFConverter
+from code.logger import Logger
+
 class ConsorsbankPDFExtractor(PDFExtractor):
     """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
     
-    def __init__(self, source: str, logger: Logger, config: yaml):
-        super().__init__(source, logger, config)
+    def __init__(self, source: str, logger: Logger, config: yaml, pdf_converter:PDFConverter):
+        super().__init__(source, logger, config, pdf_converter)
         self.previous_balance = None
     
     def extract_transactions(self):
