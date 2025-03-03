@@ -15,8 +15,6 @@ class Invoice:
         
     # Verifies if invoice is valid
     def isValid(self):
-        if not self.id:
-            self.logger.debug(f"Invoice with ID {self.id} is invalid because ID is missing.")
         return True
     
     def getDictionary(self):

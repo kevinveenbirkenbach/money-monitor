@@ -52,13 +52,9 @@ class DKBCSVExtractor(CSVExtractor):
             if transaction.value > 0:
                 transaction.owner.name = data.get("Zahlungsempfänger*in", "").strip()
                 transaction.partner.name = data.get("Zahlungspflichtige*r", "").strip()
-                transaction.setSender(transaction.partner)
-                transaction.setReceiver(transaction.owner)
             else:
                 transaction.owner.name = data.get("Zahlungspflichtige*r", "").strip()
                 transaction.partner.name = data.get("Zahlungsempfänger*in", "").strip()
-                transaction.setSender(transaction.owner)
-                transaction.setReceiver(transaction.partner)
             transaction.partner.id = data.get("IBAN", "").strip()
             transaction.currency = "EUR"
             transaction.description = data.get("Verwendungszweck", "").strip()

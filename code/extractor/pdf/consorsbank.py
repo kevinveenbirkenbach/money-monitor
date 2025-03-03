@@ -8,7 +8,6 @@ from .consorsbank_helper.amount_parser import AmountParser
 from .consorsbank_helper.balance_parser import BalanceParser
 from .consorsbank_helper.date_parser import DateParser
 from .consorsbank_helper.transaction_parser import TransactionParser
-
 class ConsorsbankPDFExtractor(PDFExtractor):
     """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
     
@@ -29,14 +28,16 @@ class ConsorsbankPDFExtractor(PDFExtractor):
             transaction = Transaction(logger=self.logger, source=self.source)
             transaction.type = m_block.group('type').strip()
             block = m_block.group('block')
-            datum_raw, wert_raw, amount_extracted, datum_iso, receiver = TransactionParser.parse_transaction_details(block, transaction.type, global_year)
+            datum_raw, wert_raw, amount_extracted, datum_iso = TransactionParser.parse_transaction_details(block, transaction.type, global_year, transaction)
             current_balance = BalanceParser.parse_balance(block)
+            
             if transaction.type == "GUTSCHRIFT" and (not amount_extracted or AmountParser.parse_amount(amount_extracted) is None):
                 if self.previous_balance is not None and current_balance is not None:
                     diff = current_balance - self.previous_balance
                     amount_extracted = AmountParser.format_amount(diff)
                 else:
                     amount_extracted = ""
+                    
             amount_val = AmountParser.parse_amount(amount_extracted)
             transaction.owner.institute = "Consorsbank"
             transaction.owner.name = "Testowner"
@@ -44,15 +45,14 @@ class ConsorsbankPDFExtractor(PDFExtractor):
             transaction.setValue(amount_val or 0.0)
             transaction.description = block.strip()
             transaction.currency = "EUR"
-            transaction.partner.id = "Example id"
-            transaction.partner.name = receiver
-            transaction.partner.institute = "Consorsbank"
             transaction.setTransactionDate(datum_iso or "2000-01-01")
             transaction.setTransactionId()
+                
             transactions.append(transaction)
             if current_balance is not None:
                 self.previous_balance = current_balance
         return transactions
+
 
     def _extract_year(self, text):
         """Extrahiert das Jahr aus dem Text, falls vorhanden."""

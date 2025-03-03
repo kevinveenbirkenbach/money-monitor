@@ -2,7 +2,7 @@
 import os
 import subprocess
 import argparse
-from transactions.logger import Logger
+from code.logger import Logger
 
 def prepare_cmd(base_dir, bank, input_path, output_file, from_date, to_date, quiet, debug, print_cmd, config):
     cmd = ["python", "main.py", "-r"]

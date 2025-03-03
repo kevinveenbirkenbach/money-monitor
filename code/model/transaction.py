@@ -110,27 +110,12 @@ class Transaction:
             # This error occurs if tz_string is not a valid time zone (e.g., "Europe/Invalid")
             self.logger.error(f"Invalid time zone '{tz_string}' in file {self.source}.")
 
-
-    
-
     def setTransactionId(self):
         if not self.id:
             digest = hashlib.sha256(self.__str__().encode()).digest()
             hash_base32 = base64.b32encode(digest).decode('utf-8').rstrip('=')
             fixed_length = 15
             self.id = "TID" + hash_base32[:fixed_length]
-    
-    def setReceiver(self, receiver:Account):
-        if self.value < 0:
-            self.partner = receiver
-        else:
-            self.owner = receiver
-
-    def setSender(self, sender:Account):
-        if self.value > 0:
-            self.partner = sender
-        else:
-            self.owner = sender
     
     def getReceiver(self)-> Account:
         if self.value < 0:

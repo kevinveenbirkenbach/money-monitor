@@ -72,13 +72,4 @@ class BarclaysTransactionBuilder:
         if not transaction.id:
             transaction.id = ""
         transaction.setTransactionId()
-        
-        # Setze Sender und Empfänger basierend auf dem Betrag
-        if transaction.value < 0:
-            transaction.setSender(transaction.owner)
-            transaction.setReceiver(transaction.partner)
-        else:
-            transaction.setSender(transaction.partner)
-            transaction.setReceiver(transaction.owner)
-        
         return transaction
