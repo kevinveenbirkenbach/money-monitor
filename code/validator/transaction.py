@@ -8,48 +8,54 @@ from datetime import date
 class Validator:
     def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, logger: logging.Logger, owner_institute: str = None):
         self.start_value = start_value
-        print(start_date)
         self.start_date = start_date
         self.end_value = end_value
         self.end_date = end_date
         self.logger = logger  # Logger instance to log messages
         self.owner_institute = owner_institute  # Optional: filter by owner institute
 
+        # Debugging: Log the initialization of the Validator
+        self.logger.debug(f"Validator initialized with start_value: {start_value}, start_date: {start_date}, "
+                          f"end_value: {end_value}, end_date: {end_date}, owner_institute: {owner_institute}")
+
     def validate_transactions(self, transactions: List[Transaction]) -> bool:
         """Validates the sum of transactions between start_date and end_date."""
         
         total_value = self.start_value
-
-        # Log the initial state
-        self.logger.info(f"Starting validation with start_value: {self.start_value}, start_date: {self.start_date}, end_value: {self.end_value}, end_date: {self.end_date}")
+        self.logger.debug(f"Starting validation for transactions between {self.start_date} and {self.end_date}")
 
         # Iterate over all transactions and sum the values within the date range
         for transaction in transactions:
             # If an owner institute is specified, only consider transactions where the institute matches
             if self.owner_institute and transaction.owner.institute != self.owner_institute:
+                self.logger.debug(f"Skipping transaction {transaction.id} due to owner institute mismatch")
                 continue
 
             # Convert transaction date
             transaction_date = datetime.strptime(transaction.transaction_date, "%Y-%m-%d")
-            
+            self.logger.debug(f"Checking transaction {transaction.id} on {transaction_date} against date range "
+                              f"{self.start_date} to {self.end_date}")
+
             # Check if the transaction date is within the specified date range
             if self.start_date <= transaction_date <= self.end_date:
                 total_value += transaction.value  # Add the transaction value
                 self.logger.debug(f"Added {transaction.value} for transaction {transaction.id} on {transaction.transaction_date}")
 
         # Log the total value after adding all relevant transactions
-        self.logger.info(f"Total calculated value: {total_value}")
+        self.logger.debug(f"Total calculated value after transactions: {total_value}")
 
         # Compare the total value with the expected end value
         if total_value == self.end_value:
-            self.logger.sucess(f"Validation passed for the period between {self.start_date} and {self.end_date}. Total value matches the expected end value.")
+            self.logger.info(f"Validation passed for the period between {self.start_date} and {self.end_date}. "
+                             f"Total value matches the expected end value.")
             return True
         else:
-            self.logger.error(f"Validation failed for the period between {self.start_date} and {self.end_date}. Total value is {total_value}, but expected {self.end_value}.")
+            self.logger.error(f"Validation failed for the period between {self.start_date} and {self.end_date}. "
+                              f"Total value is {total_value}, but expected {self.end_value}.")
             return False
 
 class TransactionValidator:
-    def __init__(self, config:yaml, logger: logging.Logger):
+    def __init__(self, config: yaml, logger: logging.Logger):
         self.config = config
         self.logger = logger
 
@@ -60,11 +66,15 @@ class TransactionValidator:
                 if 'validate' in data:
                     self.logger.debug(f"Validating institute: {institute}")
                     validate_list = sorted(data['validate'], key=lambda x: x['date'])  # Sort by date
+                    self.logger.debug(f"Sorted validation data: {validate_list}")
 
                     # Loop through pairs of dates and values for validation
                     for i in range(1, len(validate_list)):
                         start_point = validate_list[i-1]
                         end_point = validate_list[i]
+
+                        # Debug: Log the current validation pair
+                        self.logger.debug(f"Validating for {institute} between {start_point['date']} and {end_point['date']}")
 
                         # Prepare the validator for this date range
                         validator = Validator(
@@ -79,7 +89,9 @@ class TransactionValidator:
                         # Perform validation for this range of transactions
                         if not validator.validate_transactions(transactions):
                             self.logger.error(f"Validation failed for {institute} between {start_point['date']} and {end_point['date']}")
+                        else:
+                            self.logger.debug(f"Validation passed for {institute} between {start_point['date']} and {end_point['date']}")
                 else:
                     self.logger.debug(f"No validation data for {institute} passed.")
         else:
-            self.logger.debug(f"No institutes for validation defined in {config.data}")
+            self.logger.debug(f"No institutes for validation defined in the config.")
