@@ -2,6 +2,7 @@ import argparse
 from code.processor import TransactionProcessor
 from code.logger import Logger
 import yaml
+import sys
 
 def main():
     parser = argparse.ArgumentParser(
@@ -55,6 +56,11 @@ def main():
         validate=args.validate, 
     )
     processor.process()
+    
+    if logger.error_count > 0:
+        logger.warning(f"This program produced {logger.error_count} errors.")
+        logger.error("Program failed.")
+        sys.exit(logger.error_count)
 
 if __name__ == "__main__":
     main()

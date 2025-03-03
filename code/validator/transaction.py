@@ -61,7 +61,7 @@ class Validator:
 
         # Compare the total value with the expected end value
         if total_value == self.end_value:
-            self.logger.info(f"Validation passed for the period between {self.start_date} and {self.end_date}. "
+            self.logger.success(f"Validation passed for the period between {self.start_date} and {self.end_date}. "
                              f"Total value matches the expected end value.")
             return True
         else:
