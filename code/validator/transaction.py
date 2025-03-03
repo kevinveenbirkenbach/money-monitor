@@ -81,7 +81,7 @@ class Validator:
             return True
         else:
             self.logger.error(f"Validation failed for the period between {self.start_date} and {self.end_date}. "
-                                f"Total value is {total_value}, but expected {self.end_value}.")
+                                f"\nTotal value is {total_value}, but expected {self.end_value}.\nDifference: {round(total_value - self.end_value, 2)}")
             return False
 
 
