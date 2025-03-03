@@ -1,0 +1,3 @@
+from code.extractor.pdf.consorsbank.dataframe import extract_kontoauszug
+
+print(extract_kontoauszug("/home/kevinveenbirkenbach/Documents/institutions/Financial Institutes/Consorsbank/Bank Statements/KONTOAUSZUG_GIROKONTO_260337647_dat20221031_id1169277587.pdf"))
