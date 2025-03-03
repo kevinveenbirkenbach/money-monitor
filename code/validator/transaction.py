@@ -65,13 +65,14 @@ class Validator:
         if self.margin > 0:  # Positive margin: total_value can be larger than expected
             if total_value >= self.end_value and total_value <= (self.end_value + self.margin):
                 self.logger.warning(f"Validation for {self.start_date} and {self.end_date} passed with warning:\nThe total value is within the margin tolerance "
-                                    f"of {self.margin}. Total value: {total_value}, expected: {self.end_value}, difference:{round(total_value-self.end_value,2)}.")
+                                    f"of {self.margin}. Total value: {total_value}, expected: {self.end_value}, difference: {round(total_value - self.end_value, 2)}.")
                 return True
         elif self.margin < 0:  # Negative margin: total_value can be smaller than expected
-            if total_value <= self.end_value and total_value >= (self.end_value + self.margin):
+            if total_value >= (self.end_value + self.margin) and total_value <= self.end_value:
                 self.logger.warning(f"Validation for {self.start_date} and {self.end_date} passed with warning:\nThe total value is within the margin tolerance "
-                                    f"of {self.margin}. Total value: {total_value}, expected: {self.end_value}, difference:{round(total_value-self.end_value,2)}.")
+                                    f"of {self.margin}. Total value: {total_value}, expected: {self.end_value}, difference: {round(total_value - self.end_value, 2)}.")
                 return True
+
 
         # Compare the total value with the expected end value
         if total_value == self.end_value:
