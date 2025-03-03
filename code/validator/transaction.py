@@ -1,23 +1,37 @@
-from datetime import datetime
+from datetime import datetime, date
 import logging
 from typing import List
 from code.model.transaction import Transaction
 import yaml
-from datetime import date
 
 class Validator:
-    def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, logger: logging.Logger, owner_institute: str = None):
+    def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, logger: logging.Logger, institute: str = None):
         self.start_value = start_value
-        self.start_date = start_date
+        self.start_date = self._getDatetime(start_date)
         self.end_value = end_value
-        self.end_date = end_date
+        self.end_date = self._getDatetime(end_date)
         self.logger = logger  # Logger instance to log messages
-        self.owner_institute = owner_institute  # Optional: filter by owner institute
+        self.institute = institute.lower()  # Optional: filter by owner institute
 
         # Debugging: Log the initialization of the Validator
         self.logger.debug(f"Validator initialized with start_value: {start_value}, start_date: {start_date}, "
-                          f"end_value: {end_value}, end_date: {end_date}, owner_institute: {owner_institute}")
+                          f"end_value: {end_value}, end_date: {end_date}, institute: {institute}")
+    
+    def _getDatetime(self, date_and_or_time):
+        # If it's a date (but not datetime), convert it to datetime
+        if isinstance(date_and_or_time, date) and not isinstance(date_and_or_time, datetime):
+            return datetime.combine(date_and_or_time, datetime.min.time())
+        
+        # If it's already a datetime, ensure it's naive (remove timezone info if it's aware)
+        if isinstance(date_and_or_time, datetime):
+            if date_and_or_time.tzinfo is not None:
+                return date_and_or_time.replace(tzinfo=None)  # Convert aware datetime to naive datetime
+            return date_and_or_time  # It's already naive, so return as is
+        
+        # Return the value if it's neither date nor datetime
+        return None
 
+        
     def validate_transactions(self, transactions: List[Transaction]) -> bool:
         """Validates the sum of transactions between start_date and end_date."""
         
@@ -27,12 +41,13 @@ class Validator:
         # Iterate over all transactions and sum the values within the date range
         for transaction in transactions:
             # If an owner institute is specified, only consider transactions where the institute matches
-            if self.owner_institute and transaction.owner.institute != self.owner_institute:
+            if self.institute and transaction.owner.institute.lower() != self.institute:
                 self.logger.debug(f"Skipping transaction {transaction.id} due to owner institute mismatch")
                 continue
 
-            # Convert transaction date
-            transaction_date = datetime.strptime(transaction.transaction_date, "%Y-%m-%d")
+            # Convert transaction date if it's a string or date
+            transaction_date = self._getDatetime(transaction.date)
+            
             self.logger.debug(f"Checking transaction {transaction.id} on {transaction_date} against date range "
                               f"{self.start_date} to {self.end_date}")
 
@@ -83,7 +98,7 @@ class TransactionValidator:
                             end_value=end_point['value'],
                             end_date=end_point['date'],
                             logger=self.logger,
-                            owner_institute=data['owner']['id']  # Optional filtering by institute owner
+                            institute=institute  # Optional filtering by institute owner
                         )
 
                         # Perform validation for this range of transactions
