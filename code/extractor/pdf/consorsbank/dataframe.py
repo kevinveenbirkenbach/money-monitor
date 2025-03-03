@@ -2,85 +2,80 @@ import pdfplumber
 import pandas as pd
 
 def extract_kontoauszug(pdf_path):
-    # Erwartete Spaltennamen in der Kopfzeile
-    # (so wie sie ungefähr im PDF stehen)
-    expected_headers = ["Text/Verwendungszweck", "Datum", "PNNr", "Wert", "Soll", "Haben"]
+    """
+    Liest das PDF ein und erzeugt einen DataFrame,
+    bei dem jede neue Zeile durch einen der folgenden
+    Trigger-Texte eingeleitet wird (case-sensitive):
+        - '*** Kontostand zum'
+        - 'LASTSCHRIFT'
+        - 'EURO-UEBERW.'
+        - 'GEBUEHREN'
+
+    Die Zuordnung der Wörter zu Spalten erfolgt anhand
+    fester X-Koordinaten.
+    """
+    # 1) Feste Spaltenbereiche laut deiner Debug-Ausgabe:
+    columns = {
+        "Text/Verwendungszweck": (46.2, 153.204),
+        "Datum": (233.1, 261.101),
+        "PNNr": (272.75, 295.251),
+        "Wert": (311.55, 331.547),
+        "Soll": (433.45, 449.952),
+        "Haben": (521.6, 549.099)
+    }
+
+    # 2) Trigger-Wörter (case-sensitive) für einen Zeilenumbruch
+    triggers = ["*** Kontostand zum", "LASTSCHRIFT", "EURO-UEBERW.", "GEBUEHREN", "DAUERAUFTRAG", "GUTSCHRIFT"]
+
+    # Hier sammeln wir alle Zeilen
+    rows = []
+    # Die aktuelle Zeile (Dictionary mit Spalten)
+    current_row = None
 
     with pdfplumber.open(pdf_path) as pdf:
-        # ---- 1) Header-Informationen von der ersten Seite ermitteln ----
-        page = pdf.pages[0]
-        words = page.extract_words()
-
-        # Dictionary für gefundene Spalten: {spaltenname: (x0, x1)}
-        found_columns = {}
-
-        # Suchschleife: wir gleichen jedes Wort mit unseren erwarteten Headers ab
-        for w in words:
-            text = w["text"].strip()
-            if text in expected_headers:
-                found_columns[text] = (w["x0"], w["x1"])
-
-        # Falls nicht alle Header gefunden wurden -> ggf. abbrechen oder Warnung
-        missing_headers = [h for h in expected_headers if h not in found_columns]
-        if missing_headers:
-            print(f"Warnung: Nicht alle erwarteten Header gefunden: {missing_headers}")
-            # Hier ggf. return oder fallback-Logik
-
-        # ---- 2) Spalten sortieren & Grenzen definieren ----
-        # Wir sortieren nach x0, damit die Reihenfolge stimmt
-        sorted_cols = sorted(found_columns.items(), key=lambda x: x[1][0])
-        # Example: [('Text/Verwendungszweck', (10, 70)), ('Datum', (80, 100)), ...]
-
-        # Spalten-Grenzen so definieren, dass sie sich nicht überschneiden.
-        # Wir nehmen jeweils die Mitte zwischen x1 (Spalte i) und x0 (Spalte i+1)
-        columns_boundaries = {}
-        for i in range(len(sorted_cols)):
-            col_name, (col_x0, col_x1) = sorted_cols[i]
-
-            # Wenn es eine "nächste" Spalte gibt, Grenze dazwischen
-            if i < len(sorted_cols) - 1:
-                next_col_name, (next_col_x0, next_col_x1) = sorted_cols[i+1]
-                boundary = (col_x1 + next_col_x0) / 2
-                columns_boundaries[col_name] = (col_x0, boundary)
-            else:
-                # Letzte Spalte: Wir geben ihr einen "großen" Bereich
-                columns_boundaries[col_name] = (col_x0, col_x1 + 1000)
-
-        # ---- 3) Alle Seiten durchgehen & Wörter zuordnen ----
-        all_rows = []
         for page in pdf.pages:
+            # words ist eine Liste von Dictionaries mit Koordinaten und Text
             words = page.extract_words()
-            # Temporäre Struktur, um Zeilen & Spalten zu sammeln
-            rows = {}
 
             for w in words:
+                text = w["text"].strip()
                 x_left = w["x0"]
                 x_right = w["x1"]
-                top = w["top"]
 
-                # Einfaches Beispiel für Zeilen-ID: runde "top" etwas ab
-                row_key = int(round(top / 5.0))
+                # (A) Prüfen, ob dieses Wort einer der Trigger ist
+                if text in triggers:
+                    # 1) Falls schon eine Zeile existiert, beenden wir sie
+                    if current_row:
+                        rows.append(current_row)
+                    # 2) Neue Zeile anlegen
+                    current_row = {col: "" for col in columns.keys()}
+                    # Optional: Trigger direkt in die Spalte "Text/Verwendungszweck" schreiben
+                    # (falls du das möchtest und es immer dort hingehört)
+                    # current_row["Text/Verwendungszweck"] = text + " "
+                    #
+                    # An dieser Stelle geht es direkt weiter zur nächsten Word-Schleife
+                    # *ohne* nochmal unten die Spaltenzuordnung zu durchlaufen.
+                    # Wenn du es lieber in die Spalte per Koordinate packen willst,
+                    # nimm kein 'continue'.
+                    # 
+                    # Hier machen wir NICHT continue, damit pdfplumbers x-Koordinate
+                    # ggf. auch eine andere Spalte treffen kann, falls gewünscht.
 
-                # Finde passende Spalte
-                assigned = False
-                for col_name, (col_min, col_max) in columns_boundaries.items():
-                    if (x_left >= col_min) and (x_right <= col_max):
-                        if row_key not in rows:
-                            # Zeile initialisieren
-                            rows[row_key] = {c: "" for c in columns_boundaries.keys()}
-                        # Text anhängen
-                        rows[row_key][col_name] += w["text"] + " "
-                        assigned = True
-                        break
+                # (B) Wenn wir eine aktive Zeile haben, verteilen wir die Wörter
+                if current_row:
+                    assigned = False
+                    for col_name, (col_min, col_max) in columns.items():
+                        if x_left >= col_min and x_right <= col_max:
+                            current_row[col_name] += text + " "
+                            assigned = True
+                            break
+                    # Falls nichts passt, ignorieren wir das Wort
+                    # (oder du definierst eine "Rest"-Spalte)
 
-                # Falls assigned = False, liegt das Wort evtl. außerhalb der erwarteten Spalten
-                # -> je nach Bedarf ignorieren oder in "Rest"-Spalte packen
+        # Am Ende der letzten Seite noch die letzte Zeile abschließen
+        if current_row:
+            rows.append(current_row)
 
-            # Sortiere Zeilen nach row_key
-            sorted_rows = sorted(rows.items(), key=lambda x: x[0])
-            data = [r[1] for r in sorted_rows]
-            all_rows.extend(data)
-
-        # ---- 4) DataFrame bauen ----
-        df = pd.DataFrame(all_rows)
-        return df
+    # 3) DataFrame bauen
+    df = pd.DataFrame(rows)
+    return df
