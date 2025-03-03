@@ -34,14 +34,20 @@ class BarclaysTransactionBuilder:
             amount_str = '-' + amount_str[:-1]
         elif amount_str.endswith('+'):
             amount_str = amount_str[:-1]
-        amount_str = amount_str.replace(".", "").replace(",", ".")
+
+        # Falls ein Komma vorhanden ist, gehe davon aus, dass es das Dezimaltrennzeichen ist:
+        if "," in amount_str:
+            # Entferne alle Punkte (als Tausendertrenner) und ersetze das Komma durch einen Punkt
+            amount_str = amount_str.replace(".", "").replace(",", ".")
+        # Falls kein Komma vorhanden ist, gehen wir davon aus, dass der Punkt bereits korrekt ist.
+
         try:
             transaction.value = float(amount_str)
         except ValueError as e:
             self.logger.error(
                 f"Error converting amount '{booking_data['amount_str']}' in source {self.source}: {e}"
             )
-            return None        
+            return None
         
         transaction.currency = "EUR"
         # Typ (Lastschrift/Gutschrift) anhand des Vorzeichens bestimmen
