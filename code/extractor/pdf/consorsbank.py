@@ -120,19 +120,17 @@ class ConsorsbankPDFExtractor(PDFExtractor):
             except Exception:
                 amount_val = 0.0
             full_description = f"{trans_type}: {description}"
-            if datum_iso and amount_val:
-                # Hier wird "Consorsbank" als Bank übergeben.
-                transaction = Transaction(logger=self.logger,source=self.source)
-                transaction.owner.institute ="Consorsbank"
-                transaction.owner.name="Testowner"
-                transaction.owner.id="Testid"
-                transaction.setValue(amount_val)
-                transaction.description = full_description
-                transaction.currency = "EUR"
-                transaction.partner.id = "Example id"
-                transaction.setTransactionDate(datum_iso)
-                transaction.setTransactionId()
-                self.transactions.append(transaction)
-                if current_balance is not None:
-                    self.previous_balance = current_balance
+            transaction = Transaction(logger=self.logger,source=self.source)
+            transaction.owner.institute ="Consorsbank"
+            transaction.owner.name="Testowner"
+            transaction.owner.id="Testid"
+            transaction.setValue(amount_val or 0.0)
+            transaction.description = full_description
+            transaction.currency = "EUR"
+            transaction.partner.id = "Example id"
+            transaction.setTransactionDate(datum_iso or "2000-01-01")
+            transaction.setTransactionId()
+            self.transactions.append(transaction)
+            if current_balance is not None:
+                self.previous_balance = current_balance
         return self.transactions
