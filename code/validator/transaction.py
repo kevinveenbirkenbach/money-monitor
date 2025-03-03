@@ -5,17 +5,18 @@ from code.model.transaction import Transaction
 import yaml
 
 class Validator:
-    def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, logger: logging.Logger, institute: str = None):
+    def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, margin: float, logger: logging.Logger, institute: str = None):
         self.start_value = start_value
         self.start_date = self._getDatetime(start_date)
         self.end_value = end_value
         self.end_date = self._getDatetime(end_date)
+        self.margin = margin  # Margin for tolerance
         self.logger = logger  # Logger instance to log messages
-        self.institute = institute.lower()  # Optional: filter by owner institute
+        self.institute = institute.lower() if institute else None  # Optional: filter by owner institute
 
         # Debugging: Log the initialization of the Validator
         self.logger.debug(f"Validator initialized with start_value: {start_value}, start_date: {start_date}, "
-                          f"end_value: {end_value}, end_date: {end_date}, institute: {institute}")
+                          f"end_value: {end_value}, end_date: {end_date}, institute: {institute}, margin: {margin}")
     
     def _getDatetime(self, date_and_or_time):
         # If it's a date (but not datetime), convert it to datetime
@@ -31,45 +32,51 @@ class Validator:
         # Return the value if it's neither date nor datetime
         return None
 
-        
     def validate_transactions(self, transactions: List[Transaction]) -> bool:
-            """Validates the sum of transactions between start_date and end_date."""
+        """Validates the sum of transactions between start_date and end_date."""
+        
+        total_value = self.start_value
+        self.logger.debug(f"Starting validation for transactions between {self.start_date} and {self.end_date}")
+
+        # Iterate over all transactions and sum the values within the date range
+        for transaction in transactions:
+            # If an owner institute is specified, only consider transactions where the institute matches
+            if self.institute and transaction.owner.institute.lower() != self.institute:
+                self.logger.debug(f"Skipping transaction {transaction.id} due to owner institute mismatch")
+                continue
+
+            # Convert transaction date if it's a string or date
+            transaction_date = self._getDatetime(transaction.date)
             
-            total_value = self.start_value
-            self.logger.debug(f"Starting validation for transactions between {self.start_date} and {self.end_date}")
-
-            # Iterate over all transactions and sum the values within the date range
-            for transaction in transactions:
-                # If an owner institute is specified, only consider transactions where the institute matches
-                if self.institute and transaction.owner.institute.lower() != self.institute:
-                    self.logger.debug(f"Skipping transaction {transaction.id} due to owner institute mismatch")
-                    continue
-
-                # Convert transaction date if it's a string or date
-                transaction_date = self._getDatetime(transaction.date)
-                
-                self.logger.debug(f"Checking transaction {transaction.id} on {transaction_date} against date range "
+            self.logger.debug(f"Checking transaction {transaction.id} on {transaction_date} against date range "
                                 f"{self.start_date} to {self.end_date}")
 
-                # Check if the transaction date is within the specified date range
-                if self.start_date <= transaction_date <= self.end_date:
-                    total_value += transaction.value  # Add the transaction value
-                    self.logger.debug(f"Added {transaction.value} for transaction {transaction.id} on {transaction.date}")
+            # Check if the transaction date is within the specified date range
+            if self.start_date <= transaction_date <= self.end_date:
+                total_value += transaction.value  # Add the transaction value
+                self.logger.debug(f"Added {transaction.value} for transaction {transaction.id} on {transaction.date}")
 
-            total_value = round(total_value, 2)
-            
-            # Log the total value after adding all relevant transactions
-            self.logger.debug(f"Total calculated value after transactions: {total_value}")
+        total_value = round(total_value, 2)
+        
+        # Log the total value after adding all relevant transactions
+        self.logger.debug(f"Total calculated value after transactions: {total_value}")
 
-            # Compare the total value with the expected end value
-            if total_value == self.end_value:
-                self.logger.success(f"Validation passed for the period between {self.start_date} and {self.end_date}. "
+        # Check if the total value is within the margin tolerance of the expected end value
+        if abs(total_value - self.end_value) <= self.margin:
+            self.logger.warning(f"Validation passed with warning: The total value is within the margin tolerance "
+                                f"of {self.margin}. Total value: {total_value}, expected: {self.end_value}.")
+            return True
+
+        # Compare the total value with the expected end value
+        if total_value == self.end_value:
+            self.logger.success(f"Validation passed for the period between {self.start_date} and {self.end_date}. "
                                 f"Total value matches the expected end value.")
-                return True
-            else:
-                self.logger.error(f"Validation failed for the period between {self.start_date} and {self.end_date}. "
+            return True
+        else:
+            self.logger.error(f"Validation failed for the period between {self.start_date} and {self.end_date}. "
                                 f"Total value is {total_value}, but expected {self.end_value}.")
-                return False
+            return False
+
 
 class TransactionValidator:
     def __init__(self, config: yaml, logger: logging.Logger):
@@ -103,11 +110,13 @@ class TransactionValidator:
                         self.logger.debug(f"Validating for {institute} between {start_point['date']} and {end_point['date']}")
 
                         # Prepare the validator for this date range
+                        margin = end_point.get("margin", 0)  # Get the margin for tolerance if provided
                         validator = Validator(
                             start_value=start_point['value'],
                             start_date=start_point['date'],
                             end_value=end_point['value'],
                             end_date=end_point['date'],
+                            margin=margin,  # Add margin to the validation
                             logger=self.logger,
                             institute=institute  # Optional filtering by institute owner
                         )
