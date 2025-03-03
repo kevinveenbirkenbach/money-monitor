@@ -43,7 +43,7 @@ class ConsorsbankPDFExtractor(PDFExtractor):
             transaction.owner.name = "Testowner"
             transaction.owner.id = "Testid"
             transaction.setValue(amount_val or 0.0)
-            transaction.description = block.strip()
+            transaction.description = block.strip().replace(transaction.partner.name, "")
             transaction.currency = "EUR"
             transaction.setTransactionDate(datum_iso or "2000-01-01")
             transaction.setTransactionId()
