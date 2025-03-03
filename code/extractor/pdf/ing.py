@@ -9,154 +9,176 @@ from .base import PDFExtractor
 
 class IngPDFExtractor(PDFExtractor):
     """
-    Optimized extractor for ING Girokonto statements that may span multiple lines
-    per transaction. For example:
-    
-        01.11.2018 Ueberweisung werwe GmbH -100,00
-        01.11.2018 32X3-12312123
-        ...
-        Mandat: 11231231
-        Referenz: 123123121342423
+    Extractor for ING Girokonto statements that show:
+      - First line: Buchung date, description, amount
+      - Second line: Valuta date, optional extra text appended to description
+      - Possible subsequent lines with "Mandat: ..." or "Referenz: ..."
+
     """
 
-    # Regex to capture the main transaction line:
-    #   1) Date (dd.mm.yyyy)
-    #   2) Description (any text until the last space group)
-    #   3) Amount, possibly negative (like -140,00)
-    transaction_line_pattern = re.compile(
-        r"^(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?)$"
+    # ----------------------------------------------------------
+
+    # ----------------------------------------------------------
+    # group(1): Buchung date (dd.mm.yyyy)
+    # group(2): Description (any text until last space group)
+    # group(3): Amount (possibly negative, e.g. -70,99)
+    # Group(1) = date, Group(2) = description, Group(3) = amount, 
+    # then optionally allow leftover text we can ignore.
+    booking_line_pattern = re.compile(
+        r"^(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*(?:,\d{2}))\s*(.*)?$"
     )
 
-    # Regex to capture "Mandat: <some_id>"
-    mandat_pattern = re.compile(r"^Mandat:\s*(\S+)")
+    # ----------------------------------------------------------
+    # 2) CHANGED: Regex to capture a line with Valuta date + leftover text
+    #    e.g.: "30.12.2022 Cleaning"
+    # ----------------------------------------------------------
+    # group(1): Valuta date (dd.mm.yyyy)
+    # group(2): Any leftover text appended to description
+    valuta_line_pattern = re.compile(
+        r"^(\d{2}\.\d{2}\.\d{4})(?:\s+(.*))?$"
+    )
 
-    # Regex to capture "Referenz: <some_id>"
+    # Regex for Mandat and Referenz lines
+    mandat_pattern = re.compile(r"^Mandat:\s*(\S+)")
     referenz_pattern = re.compile(r"^Referenz:\s*(\S+)")
 
     def extract_transactions(self):
+        # Attempt to open and read the PDF
         with pdfplumber.open(self.source) as pdf:
             if not pdf.pages:
                 self.logger.warning(f"No pages found in {self.source}")
                 return []
 
-            # Attempt to find the IBAN anywhere in the document
+            # ----------------------------------------------------------
+            # 3) CHANGED: We first read the entire PDF text to find the IBAN
+            # ----------------------------------------------------------
             full_text = ""
             for page in pdf.pages:
                 page_text = page.extract_text() or ""
                 full_text += page_text + "\n"
 
-                # Look for "IBAN" plus something that looks like DE + up to 20 digits,
-                # possibly with spaces in between. Then strip out the spaces.
-                iban_match = re.search(
-                    r'IBAN\s+(DE[0-9\s]{20,30})',  # "DE" + 20 digits, allowing spaces
-                    full_text
-                )
-                if iban_match:
-                    raw_iban = iban_match.group(1)                # e.g. "DE86 5001 0517 5426 7687 95"
-                    account_iban = re.sub(r'\s+', '', raw_iban)   # => "DE86500105175426768795"
-                    # Optionally verify we have 22 characters:
-                    if len(account_iban) == 22:
-                        self.logger.debug(f"Captured IBAN: {account_iban}")
-                    else:
-                        self.logger.warning(
-                            f"Found IBAN-like text but length != 22: {account_iban}"
-                        )
-                else:
-                    account_iban = None
+            # Search for a full 22-char IBAN, ignoring spaces
+            iban_match = re.search(r"IBAN\s+(DE[0-9\s]{20,30})", full_text)
+            if iban_match:
+                raw_iban = iban_match.group(1)
+                account_iban = re.sub(r"\s+", "", raw_iban)  # e.g. "DE86500105175426768795"
+                if len(account_iban) != 22:
+                    self.logger.warning(f"Found IBAN but length != 22: {account_iban}")
+            else:
+                account_iban = None
 
-            # We will process each page line by line, building transactions
-            # when we match the main transaction line pattern.
+            # ----------------------------------------------------------
+            # 4) CHANGED: Now parse line-by-line for each page
+            # ----------------------------------------------------------
             for page in pdf.pages:
                 lines = page.extract_text().splitlines()
                 i = 0
                 while i < len(lines):
                     line = lines[i].strip()
-                    main_match = self.transaction_line_pattern.match(line)
+                    booking_match = self.booking_line_pattern.match(line)
 
-                    if main_match:
-                        # We found a main transaction line
-                        date_str = main_match.group(1)
-                        description = main_match.group(2).strip()
-                        amount_str = main_match.group(3).replace(".", "").replace(",", ".")
+                    if booking_match:
+                        # We found a "Buchung" line with date, description, amount
+                        buchung_date_str = booking_match.group(1)
+                        description      = booking_match.group(2).strip()
+                        amount_str       = booking_match.group(3).replace(".", "").replace(",", ".")
 
-                        # Create the Transaction object
+                        # Create Transaction
                         transaction = Transaction(
                             logger=self.logger,
-                            source=self.source,
+                            source=self.source
                         )
-                        # Owner = ING account
+                        # Assign an OwnerAccount
                         transaction.owner = OwnerAccount(
                             logger=self.logger,
                             id=account_iban,
                             institute="ING"
                         )
-                        # Create an empty Invoice object
+                        # Invoice object
                         transaction.invoice = Invoice()
 
-                        # Attempt to parse date
-                        transaction.setTransactionDate(date_str)
+                        # Set the booking date
+                        transaction.setTransactionDate(buchung_date_str)
 
-                        # Convert amount to float
+                        # Parse amount
                         try:
                             transaction.value = float(amount_str)
                         except ValueError as e:
                             self.logger.error(
                                 f"Error converting amount '{amount_str}' "
-                                f"for date '{date_str}' in file {self.source}: {e}"
+                                f"for line '{line}' in file {self.source}: {e}"
                             )
                             i += 1
                             continue
 
-                        # Default currency
                         transaction.currency = "EUR"
                         transaction.description = description
 
                         # Decide sender/receiver based on sign of transaction.value
                         if transaction.value < 0:
-                            # Negative => money leaving the owner’s account
                             transaction.setSender(transaction.owner)
                             transaction.partner = Account(self.logger)
                             transaction.setReceiver(transaction.partner)
                         else:
-                            # Positive => money flowing into the owner’s account
                             transaction.partner = Account(self.logger)
                             transaction.setSender(transaction.partner)
                             transaction.setReceiver(transaction.owner)
 
-                        # Now, look ahead for subsequent lines that belong to the same transaction
-                        # e.g. second line of description, Mandat, Referenz, etc.
+                        # ----------------------------------------------------------
+                        # 5) CHANGED: Check the NEXT line for Valuta date
+                        #    e.g. "30.12.2022 Cleaning"
+                        # ----------------------------------------------------------
                         j = i + 1
+                        if j < len(lines):
+                            next_line = lines[j].strip()
+                            valuta_match = self.valuta_line_pattern.match(next_line)
+                            if valuta_match:
+                                # If there's a Valuta date on the next line:
+                                valuta_date_str = valuta_match.group(1)
+                                transaction.setValutaDate(valuta_date_str)
+
+                                # If leftover text after the date, append to description
+                                leftover_text = valuta_match.group(2)
+                                if leftover_text:
+                                    # Add a space + leftover to transaction.description
+                                    transaction.description += f" {leftover_text}"
+                                j += 1
+
+                        # ----------------------------------------------------------
+                        # 6) CHANGED: Additional lines for Mandat / Referenz
+                        # ----------------------------------------------------------
                         while j < len(lines):
                             sub_line = lines[j].strip()
 
-                            # Stop if we see another main transaction line
-                            if self.transaction_line_pattern.match(sub_line):
+                            # If we see a new "Buchung" line, break
+                            if self.booking_line_pattern.match(sub_line):
+                                break
+                            # If we see a new Valuta line, it might be a new transaction => break
+                            if self.valuta_line_pattern.match(sub_line):
                                 break
 
-                            # Check if the sub_line is a date + partial text line
-                            # (like "01.11.2018 35C3-ZF9GQDJJET"), we can append to description
-                            if re.match(r"^\d{2}\.\d{2}\.\d{4}\s", sub_line):
-                                transaction.description += " " + sub_line
-
-                            # Check for "Mandat: <some_id>"
+                            # Mandat?
                             mandat_match = self.mandat_pattern.match(sub_line)
                             if mandat_match:
                                 transaction.invoice.mandate_reference = mandat_match.group(1)
 
-                            # Check for "Referenz: <some_id>"
+                            # Referenz?
                             referenz_match = self.referenz_pattern.match(sub_line)
                             if referenz_match:
                                 transaction.invoice.customer_reference = referenz_match.group(1)
 
                             j += 1
 
+                        # Generate a transaction ID
                         transaction.setTransactionId()
-                        # We have built the transaction; add it to the list
+
+                        # Append the transaction
                         self.transactions.append(transaction)
 
-                        # Move i to j (we have consumed sub-lines)
+                        # Move the outer pointer
                         i = j
                     else:
+                        # No match => move to next line
                         i += 1
 
         return self.transactions
