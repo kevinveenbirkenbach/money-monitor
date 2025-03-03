@@ -34,11 +34,13 @@ class Transaction:
         self.type                   = None
         self.medium                 = None
         
-
     def setValutaDate(self, date_string):
         """
         Similar to setTransactionDate, but for Valuta (value date).
         """
+        # Debugging statement to show the raw date_string
+        self.logger.debug(f"Attempting to parse valuta date: '{date_string}'")
+
         date_string = date_string.strip().replace('"', '')
         for fmt in ("%d.%m.%Y", "%d.%m.%y"):
             try:
@@ -49,8 +51,11 @@ class Transaction:
                 continue
         self.logger.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
 
+
     def setTransactionDate(self, date_string):
-        # Remove extra whitespace and quotes
+        # Debugging statement to show the raw date_string
+        self.logger.debug(f"Attempting to parse transaction date: '{date_string}'")
+        
         date_string = date_string.strip().replace('"', '')
 
         # Attempt parsing with multiple date formats
@@ -63,6 +68,9 @@ class Transaction:
             except ValueError:
                 continue
 
+        # If parsing failed for all formats, log an error
+        self.logger.error(f"Invalid date format '{date_string}' in file {self.source}.")
+    
         # If parsing failed for all formats, log an error
         self.logger.error(f"Invalid date format '{date_string}' in file {self.source}.")
 

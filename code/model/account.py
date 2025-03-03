@@ -7,12 +7,11 @@ class Account:
         self.name = name            # Owner of the Account like Max Mustermann
         self.institute = institute  # The institute the account belongs to  
 
-    # Verifies if accout is valid
     def isValid(self)->bool:
         if bool(self.id or self.name or self.institute):
             return True
         else:
-            self.logger.warning("Account isn't valid.")
+            self.logger.warning(f"Account with ID {self.id} isn't valid.")
             return False
     
     def getDictionary(self)-> dict:
@@ -21,7 +20,7 @@ class Account:
             "name":         self.name,
             "institute":    self.institute,
         }
-        
+    
     def getIdentity(self)-> str:
         if self.id:
             return self.id
@@ -29,7 +28,7 @@ class Account:
             return self.name
         if self.institute:
             return self.institute
-        self.logger.warning("Account doesn't have an identity.")
+        self.logger.warning(f"Account with ID {self.id} doesn't have a valid identity.")
         return ""
     
 class OwnerAccount(Account):
