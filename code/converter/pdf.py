@@ -12,15 +12,17 @@ class PDFConverter:
         self.pdf = None
         self.full_text = None
         self.pages = None
+        self.pages_data_frame=None
     
     def __del__(self):
         if self.pdf:
             self.pdf.close()  
             
     def getLazyPdf(self): 
-        if not self.pdf:
-            self.pdf = pdfplumber.open(self.pdf_path)
-        return self.pdf
+        if self.pdf:
+            return self.pdf
+        self.pdf = pdfplumber.open(self.pdf_path)
+        return self.pdf 
 
     def getLazyFullText(self)->str:
         if not self.full_text:
@@ -34,9 +36,10 @@ class PDFConverter:
                 return None
         return self.full_text
 
-    def getLazyPages(self):
-        if not self.pages:
-            self.pages = self.getLazyPdf().pages or None
+    def getLazyPages(self)->[]:
+        if self.pages:
+            return self.pages
+        self.pages = self.getLazyPdf().pages or []
         return self.pages
 
     
@@ -44,6 +47,14 @@ class PDFConverter:
         table = page.extract_table()
         dataframe = pandas.DataFrame(table[1:], columns=table[0])
         return dataframe
+    
+    def getLazyPagesDataFrame(self):
+        if self.pages_data_frame:
+            return self.pages_data_frame
+        for page in self.getLazyPages():
+            self.pages_data_frame=[]
+            self.pages_data_frame.append(self.getPageDataFrame(page))
+        return self.pages_data_frame
         
     def getText(self) -> str:
         """Extrahiert den Text aus dem gesamten PDF oder einer begrenzten Anzahl von Seiten."""
