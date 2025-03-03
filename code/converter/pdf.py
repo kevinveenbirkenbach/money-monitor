@@ -51,8 +51,8 @@ class PDFConverter:
     def getLazyPagesDataFrame(self):
         if self.pages_data_frame:
             return self.pages_data_frame
+        self.pages_data_frame = []  # Initialisierung außerhalb der Schleife
         for page in self.getLazyPages():
-            self.pages_data_frame=[]
             self.pages_data_frame.append(self.getPageDataFrame(page))
         return self.pages_data_frame
         
