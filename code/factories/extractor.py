@@ -1,6 +1,7 @@
 import os
 import importlib
 from pdfminer.high_level import extract_text
+from code.converter.pdf import PDFConverter
 
 class ExtractorFactory:
     """
@@ -75,16 +76,17 @@ class ExtractorFactory:
 
         # Handle PDF
         elif ext == ".pdf":
-            try:
-                text = extract_text(file_path, maxpages=1) or ""
-                lower_text = text.lower()
-            except Exception as e:
-                self.logger.warning(f"Could not extract text from '{file_path}'. Reason: {e}")
+            pdf_converter = PDFConverter(self.logger, file_path);
+            
+            first_page_text = pdf_converter.getFirstPage()
+            if first_page_text:
+                lower_first_page_text = first_page_text.lower()
+            else:
                 return None
 
             # Go through each PDF mapping
             for condition_func, name in self.pdf_extractor_mappings:
-                if condition_func(text, lower_text):
+                if condition_func(first_page_text, lower_first_page_text):
                     module_name = f"code.extractor.pdf.{name.lower()}.extractor"
                     class_name = f"{name}PDFExtractor"
                     self.logger.debug(f"Using extractor {module_name}.{class_name} for {file_path}")        

@@ -4,14 +4,13 @@ import pytz  # Import pytz for timezone management (optional, if using time zone
 
 class Exporter:
     def __init__(self, transactions, output_file, logger=Logger(), quiet=False):
+        self.output_file = output_file
+        self.logger = logger
         # Sorting the transactions by date, using the normalization method
         self.transactions = sorted(
             transactions, 
             key=lambda t: self._normalize_to_datetime(t)
         )
-
-        self.output_file = output_file
-        self.logger = logger
 
     def get_data_as_dicts(self):
         return [
@@ -19,7 +18,7 @@ class Exporter:
         ]
         
     def _normalize_to_datetime(self, t):
-        print(f"Normalizing date: {t.date} (Type: {type(t.date)})")  # Debugging print to see the type
+        self.logger.debug(f"Normalizing date: {t.date} (Type: {type(t.date)})")  # Debugging print to see the type
         if isinstance(t.date, datetime):  # Check if it's already a datetime object
             # If the datetime is timezone-aware, we convert it to naive by removing the time zone info
             if t.date.tzinfo is not None:
