@@ -54,8 +54,10 @@ class Validator:
             # Check if the transaction date is within the specified date range
             if self.start_date <= transaction_date <= self.end_date:
                 total_value += transaction.value  # Add the transaction value
-                self.logger.debug(f"Added {transaction.value} for transaction {transaction.id} on {transaction.transaction_date}")
+                self.logger.debug(f"Added {transaction.value} for transaction {transaction.id} on {transaction.date}")
 
+        total_value = round(total_value, 2)
+        
         # Log the total value after adding all relevant transactions
         self.logger.debug(f"Total calculated value after transactions: {total_value}")
 
