@@ -18,13 +18,11 @@ class ExtractorFactory:
         self.csv_extractor_mappings = [
             (
                 lambda content: "Transaktionscode" in content or "PayPal" in content,
-                "code.extractor.csv.paypal",    # e.g. .extractor_csv_paypal
-                "PayPalCSVExtractor"
+                "PayPal",
             ),
             (
                 lambda content: "Buchungsdatum" in content,
-                "code.extractor.csv.dkb", 
-                "DKBCSVExtractor"
+                "DKB", 
             ),
         ]
 
@@ -32,12 +30,12 @@ class ExtractorFactory:
         # Each entry is: (condition_func, module_name, class_name)
         # condition_func receives (text, lower_text)
         self.pdf_extractor_mappings = [
-            (
-                lambda text, lower_text: "paypal" in lower_text
-                                         and ("händlerkonto-id" in lower_text
-                                              or "transaktionsübersicht" in lower_text),
-                "PayPal"
-            ),
+ #           (
+ #               lambda text, lower_text: "paypal" in lower_text
+ #                                        and ("händlerkonto-id" in lower_text
+ #                                             or "transaktionsübersicht" in lower_text),
+ #               "PayPal"
+ #           ),
             (
                 lambda text, lower_text: "ing-diba" in lower_text or "ingddeffxxx" in lower_text,
                 "Ing"
@@ -57,25 +55,24 @@ class ExtractorFactory:
         Chooses and instantiates the correct extractor based on the file extension
         and file content. Returns an extractor instance or None if no match is found.
         """
-        ext = os.path.splitext(file_path)[1].lower()
+        file_type = os.path.splitext(file_path)[1].lower()
 
         # Handle CSV
-        if ext == ".csv":
+        if file_type == ".csv":
             with open(file_path, encoding="utf-8") as f:
                 # Read first ~10 lines to detect patterns
                 lines = [f.readline() for _ in range(10)]
             content = " ".join(lines)
 
             # Go through each CSV mapping
-            for condition_func, module_name, class_name in self.csv_extractor_mappings:
+            for condition_func, name in self.csv_extractor_mappings:
                 if condition_func(content):
-                    return self._instantiate_extractor(module_name, class_name, file_path)
-
+                    return self._instantiate_extractor(name, file_type, file_path)
             self.logger.info(f"No matching CSV extractor found for '{file_path}'.")
             return None
 
         # Handle PDF
-        elif ext == ".pdf":
+        elif file_type == ".pdf":
             pdf_converter = PDFConverter(self.logger, file_path);
             
             first_page_text = pdf_converter.getFirstPage()
@@ -86,12 +83,8 @@ class ExtractorFactory:
 
             # Go through each PDF mapping
             for condition_func, name in self.pdf_extractor_mappings:
-                if condition_func(first_page_text, lower_first_page_text):
-                    module_name = f"code.extractor.pdf.{name.lower()}.extractor"
-                    class_name = f"{name}PDFExtractor"
-                    self.logger.debug(f"Using extractor {module_name}.{class_name} for {file_path}")        
-                    return self._instantiate_extractor(module_name, class_name, file_path, pdf_converter)
-
+                if condition_func(first_page_text, lower_first_page_text):      
+                    return self._instantiate_extractor(name, file_type, file_path, pdf_converter)
             self.logger.info(f"No matching PDF extractor found for '{file_path}'.")
             return None
 
@@ -100,7 +93,9 @@ class ExtractorFactory:
             self.logger.info(f"Unsupported file extension '{ext}' for {file_path}.")
             return None
 
-    def _instantiate_extractor(self, module_name, class_name, file_path, pdf_converter):
+    def _instantiate_extractor(self, name, file_type, file_path, pdf_converter=None):
+        module_name = f"code.extractor.{file_type.lower().replace(".", "")}.{name.lower()}.extractor"
+        class_name = f"{name}{file_type.upper().replace(".", "")}Extractor"
         """
         Dynamically imports the extractor module and instantiates the extractor class.
         """
@@ -109,7 +104,9 @@ class ExtractorFactory:
             module = importlib.import_module(f"{module_name}")
             extractor_class = getattr(module, class_name)
             # If your extractor needs a logger, pass it here as well
-            return extractor_class(file_path, logger=self.logger, config=self.config, pdf_converter=pdf_converter)
+            if pdf_converter:
+                return extractor_class(file_path, logger=self.logger, config=self.config, pdf_converter=pdf_converter)
+            return extractor_class(file_path, logger=self.logger, config=self.config)
         except Exception as e:
             self.logger.error(f"Failed to instantiate extractor {class_name} from {module_name}: {e}")
             return None

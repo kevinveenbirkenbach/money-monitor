@@ -1,5 +1,4 @@
 import re
-from pdfminer.high_level import extract_text
 from code.model.transaction import Transaction
 from ..base import PDFExtractor
 import yaml
@@ -19,14 +18,15 @@ class ConsorsbankPDFExtractor(PDFExtractor):
         self.previous_balance = None
     
     def extract_transactions(self):
-        text = extract_text(self.source)
+        transactions = []
+        text = self.pdf_converter.getText()
         global_year = self._extract_year(text)
         block_pattern = re.compile(
             r'^(?P<type>LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n'
             r'(?P<block>.*?)(?=^(?:LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n|\Z)',
             re.DOTALL | re.MULTILINE
         )
-        transactions = []
+        
         for m_block in block_pattern.finditer(text):
             transaction = Transaction(logger=self.logger, source=self.source)
             transaction.type = m_block.group('type').strip()
@@ -55,7 +55,6 @@ class ConsorsbankPDFExtractor(PDFExtractor):
             if current_balance is not None:
                 self.previous_balance = current_balance
         return transactions
-
 
     def _extract_year(self, text):
         """Extrahiert das Jahr aus dem Text, falls vorhanden."""

@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from pdfminer.high_level import extract_text
 from ...model.transaction import Transaction
 from ...logger import Logger
 from .base import PDFExtractor
@@ -8,7 +7,7 @@ from .base import PDFExtractor
 # ATM using csv
 class PayPalPDFExtractor(PDFExtractor):
     def extract_transactions(self):
-        text = extract_text(self.source)
+        text = self.pdf_converter.getText()
         lines = text.splitlines()
 
         header_index = None

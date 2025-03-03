@@ -1,6 +1,5 @@
 import os
 import concurrent.futures
-from pdfminer.high_level import extract_text
 from .logger import Logger
 from .factories.extractor import ExtractorFactory
 from .model.transaction import Transaction

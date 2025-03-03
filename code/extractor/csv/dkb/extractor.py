@@ -1,7 +1,7 @@
 import csv
-from ...model.transaction import Transaction
-from ...logger import Logger
-from .base import CSVExtractor
+from code.model.transaction import Transaction
+from code.logger import Logger
+from ..base import CSVExtractor
 from code.model.account import Account, OwnerAccount
 
 class DKBCSVExtractor(CSVExtractor):

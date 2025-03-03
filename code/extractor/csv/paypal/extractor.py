@@ -1,9 +1,9 @@
 import csv
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from ...model.transaction import Transaction
-from ...logger import Logger
-from .base import CSVExtractor
+from code.model.transaction import Transaction
+from code.logger import Logger
+from ..base import CSVExtractor
 from code.model.account import Account, OwnerAccount
 
 class PayPalCSVExtractor(CSVExtractor):
@@ -16,7 +16,6 @@ class PayPalCSVExtractor(CSVExtractor):
                 transaction.owner = OwnerAccount(self.logger)
                 transaction.owner.id = self.config.get("institutes").get("paypal").get("owner").get("id")
                 transaction.owner.name = self.config.get("institutes").get("paypal").get("owner").get("name")
-                # transaction.owner.name = self.config.institutes.paypal.owner.name
                 transaction.owner.institute = "Paypal"
 
                 # -------------------------
