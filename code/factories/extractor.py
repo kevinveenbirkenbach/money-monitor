@@ -35,23 +35,19 @@ class ExtractorFactory:
                 lambda text, lower_text: "paypal" in lower_text
                                          and ("händlerkonto-id" in lower_text
                                               or "transaktionsübersicht" in lower_text),
-                "code.extractor.pdf.paypal",
-                "PayPalPDFExtractor"
+                "PayPal"
             ),
             (
                 lambda text, lower_text: "ing-diba" in lower_text or "ingddeffxxx" in lower_text,
-                "code.extractor.pdf.ing",
-                "IngPDFExtractor"
+                "Ing"
             ),
             (
                 lambda text, lower_text: "consorsbank" in lower_text or "kontoauszug" in lower_text,
-                "code.extractor.pdf.consorsbank",
-                "ConsorsbankPDFExtractor"
+                "Consorsbank",
             ),
             (
                 lambda text, lower_text: "barclaycard" in lower_text or "barcdehaxx" in lower_text,
-                "code.extractor.pdf.barclays",
-                "BarclaysPDFExtractor"
+                "Barclays"
             ),
         ]
 
@@ -87,8 +83,10 @@ class ExtractorFactory:
                 return None
 
             # Go through each PDF mapping
-            for condition_func, module_name, class_name in self.pdf_extractor_mappings:
+            for condition_func, name in self.pdf_extractor_mappings:
                 if condition_func(text, lower_text):
+                    module_name = f"code.extractor.pdf.{name.lower()}.extractor"
+                    class_name = f"{name}PDFExtractor"
                     self.logger.debug(f"Using extractor {module_name}.{class_name} for {file_path}")        
                     return self._instantiate_extractor(module_name, class_name, file_path)
 

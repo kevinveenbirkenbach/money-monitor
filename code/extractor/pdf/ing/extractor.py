@@ -2,12 +2,12 @@ import re
 import pdfplumber
 import yaml
 from code.logger import Logger
-from code.extractor.pdf.ing_helpers.booking_line_parser import BookingLineParser
-from code.extractor.pdf.ing_helpers.valuta_line_parser import ValutaLineParser
-from code.extractor.pdf.ing_helpers.additional_info_parser import AdditionalInfoParser
-from code.extractor.pdf.ing_helpers.transaction_builder import TransactionBuilder
-from code.extractor.pdf.ing_helpers.iban_parser import IBANParser
-from .base import PDFExtractor  # Basisklasse importieren
+from .booking_line_parser import BookingLineParser
+from .valuta_line_parser import ValutaLineParser
+from .additional_info_parser import AdditionalInfoParser
+from .transaction_builder import TransactionBuilder
+from .iban_parser import IBANParser
+from ..base import PDFExtractor  # Basisklasse importieren
 
 class IngPDFExtractor(PDFExtractor):
     """

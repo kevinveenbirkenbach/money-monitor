@@ -1,13 +1,13 @@
 import re
 from pdfminer.high_level import extract_text
 from code.model.transaction import Transaction
-from .base import PDFExtractor
+from ..base import PDFExtractor
 import yaml
 from code.logger import Logger
-from .consorsbank_helper.amount_parser import AmountParser
-from .consorsbank_helper.balance_parser import BalanceParser
-from .consorsbank_helper.date_parser import DateParser
-from .consorsbank_helper.transaction_parser import TransactionParser
+from .amount_parser import AmountParser
+from .balance_parser import BalanceParser
+from .date_parser import DateParser
+from .transaction_parser import TransactionParser
 class ConsorsbankPDFExtractor(PDFExtractor):
     """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
     

@@ -5,6 +5,7 @@ from ...model.transaction import Transaction
 from ...logger import Logger
 from .base import PDFExtractor
 
+# ATM using csv
 class PayPalPDFExtractor(PDFExtractor):
     def extract_transactions(self):
         text = extract_text(self.source)

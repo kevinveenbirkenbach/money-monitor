@@ -2,11 +2,11 @@ import re
 import pdfplumber
 import yaml
 from code.logger import Logger
-from code.extractor.pdf.barclays_helpers.barclays_booking_line_parser import BarclaysBookingLineParser
-from code.extractor.pdf.barclays_helpers.barclays_additional_info_parser import BarclaysAdditionalInfoParser
-from code.extractor.pdf.barclays_helpers.barclays_iban_parser import BarclaysIBANParser
-from code.extractor.pdf.barclays_helpers.barclays_transaction_builder import BarclaysTransactionBuilder
-from .base import PDFExtractor  # Basisklasse importieren
+from .booking_line_parser import BarclaysBookingLineParser
+from .additional_info_parser import BarclaysAdditionalInfoParser
+from .iban_parser import BarclaysIBANParser
+from .transaction_builder import BarclaysTransactionBuilder
+from ..base import PDFExtractor  # Basisklasse importieren
 
 class BarclaysPDFExtractor(PDFExtractor):
     """
