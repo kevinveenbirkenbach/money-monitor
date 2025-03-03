@@ -80,7 +80,7 @@ class TransactionProcessor:
 
         if self.validate:
             # Create an instance of TransactionValidator and validate transactions
-            validator = TransactionValidator(self.config, self.logger)
+            validator = TransactionValidator(self.config, self.logger, from_date=self.from_date, to_date=self.to_date)
             validator.validate(self.all_transactions)
 
         # Export logic: iterate over all specified export types
