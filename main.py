@@ -3,7 +3,6 @@ from code.processor import TransactionProcessor
 from code.logger import Logger
 import yaml
 
-
 def main():
     parser = argparse.ArgumentParser(
         description="Extract transactions from bank statement PDFs and save to one or more output formats."
@@ -21,6 +20,7 @@ def main():
     parser.add_argument("-d", "--debug", action="store_true", help="Enable detailed debug output.")
     parser.add_argument("--print-cmd", action="store_true", help="Print constructed CMD commands before execution.")
     parser.add_argument("--config", type=str, help="Path to a YAML config file with default values.")
+    parser.add_argument("--validate", action="store_true", help="Enable validation based on config.")
     
     args = parser.parse_args()
 
@@ -51,7 +51,8 @@ def main():
         quiet=args.quiet,
         logger=logger,
         print_cmd=args.print_cmd,
-        config=config_data  # <-- Pass the loaded YAML as a dict
+        config=config_data,
+        validate=args.validate, 
     )
     processor.process()
 

@@ -3,11 +3,12 @@ import concurrent.futures
 from .logger import Logger
 from .factories.extractor import ExtractorFactory
 from .model.transaction import Transaction
+from code.validator.transaction import TransactionValidator
 
 class TransactionProcessor:
     def __init__(self, input_paths, output_base, print_transactions=False, recursive=False, export_types=None,
                  from_date=None, to_date=None, create_dirs=False, quiet=False, logger=Logger(),
-                 print_cmd=False, config=None):
+                 print_cmd=False, config=None, validate=False):
         self.input_paths = input_paths
         self.output_base = output_base
         self.all_transactions = []
@@ -20,7 +21,8 @@ class TransactionProcessor:
         self.quiet = quiet
         self.print_cmd = print_cmd
         self.logger = logger
-        self.config = config or {}  # Store the loaded YAML defaults here
+        self.config = config or {}
+        self.validate = validate
 
     def extract_from_file(self, file_path):
         extractor_factory = ExtractorFactory(self.logger, config=self.config)
@@ -76,6 +78,11 @@ class TransactionProcessor:
             if not transaction.isValid():
                 self.logger.error(f"Unvalid transaction: {transaction}");
 
+        if self.validate:
+            # Create an instance of TransactionValidator and validate transactions
+            validator = TransactionValidator(self.config, self.logger)
+            validator.validate(self.all_transactions)
+
         # Export logic: iterate over all specified export types
         for fmt in self.export_types:
             ext = f".{fmt}"
@@ -103,14 +110,6 @@ class TransactionProcessor:
                 exporter.export()
         if self.print_transactions:
             self.console_output()
-
-    def extract_from_file(self,file_path):
-        extractor_factory = ExtractorFactory(self.logger, config=self.config)
-        extractor = extractor_factory.create_extractor(file_path)
-        if extractor:
-            return extractor.extract_transactions()
-        else:
-            return []
 
     def console_output(self):
         if self.quiet:
