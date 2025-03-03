@@ -85,6 +85,15 @@ class TransactionValidator:
                     validate_list = sorted(data['validate'], key=lambda x: x['date'])  # Sort by date
                     self.logger.debug(f"Sorted validation data: {validate_list}")
 
+                    # Check if there are any transactions associated with this institute
+                    institute_transactions = [
+                        txn for txn in transactions if txn.owner.institute.lower() == institute
+                    ]
+
+                    if not institute_transactions:
+                        self.logger.debug(f"No transactions found for institute {institute}. Skipping validation.")
+                        continue  # Skip validation for this institute if no transactions are associated with it
+
                     # Loop through pairs of dates and values for validation
                     for i in range(1, len(validate_list)):
                         start_point = validate_list[i-1]
@@ -104,7 +113,7 @@ class TransactionValidator:
                         )
 
                         # Perform validation for this range of transactions
-                        if not validator.validate_transactions(transactions):
+                        if not validator.validate_transactions(institute_transactions):
                             self.logger.error(f"Validation failed for {institute} between {start_point['date']} and {end_point['date']}")
                         else:
                             self.logger.debug(f"Validation passed for {institute} between {start_point['date']} and {end_point['date']}")
@@ -112,3 +121,4 @@ class TransactionValidator:
                     self.logger.debug(f"No validation data for {institute} passed.")
         else:
             self.logger.debug(f"No institutes for validation defined in the config.")
+
