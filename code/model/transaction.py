@@ -30,7 +30,23 @@ class Transaction:
         self.date                   = date                              # Obligatoric: The date when the transaction was done
         self.id                     = None                              # Obligatoric: The unique identifier of the transaction
         self.related_transaction_id = None                              # Optional: ID of the related transaction
+        self.valuta_date            = None                              # Optional: Date when the booking was ordered
         
+
+    def setValutaDate(self, date_string):
+        """
+        Similar to setTransactionDate, but for Valuta (value date).
+        """
+        date_string = date_string.strip().replace('"', '')
+        for fmt in ("%d.%m.%Y", "%d.%m.%y"):
+            try:
+                parsed_date = datetime.strptime(date_string, fmt).date()
+                self.valuta_date = parsed_date
+                return
+            except ValueError:
+                continue
+        self.logger.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
+
     def setTransactionDate(self, date_string):
         # Remove extra whitespace and quotes
         date_string = date_string.strip().replace('"', '')
@@ -185,6 +201,7 @@ class Transaction:
             "sender":                   self.getSender() and self.getSender().getIdentity(),
             "receiver":                 self.getReceiver() and self.getReceiver().getIdentity(),
             "description":              self.description,
+            "valuta_date":              self.valuta_date and self.valuta_date.strftime("%Y-%m-%d") or self.date.strftime("%Y-%m-%d"),
             "source":                   self.source,
             "time":                     self._get_time_with_tz(),
             "related_transaction_id":   self.related_transaction_id,
