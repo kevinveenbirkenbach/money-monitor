@@ -70,12 +70,14 @@ class Validator:
                                 f"\nTotal value is {total_value}, but expected {self.end_value}.\nDifference: {round(total_value - self.end_value, 2)}")
             return False
 
+from datetime import datetime
+
 class TransactionValidator:
     def __init__(self, config: yaml, logger: logging.Logger, from_date: str = None, to_date: str = None):
         self.config = config
         self.logger = logger
         self.from_date = createComparatableTime(datetime.strptime(from_date, "%Y-%m-%d")) if from_date else None
-        self.to_date = createComparatableTime(datetime.strptime(from_date, "%Y-%m-%d")) if to_date else None
+        self.to_date = createComparatableTime(datetime.strptime(to_date, "%Y-%m-%d")) if to_date else None
 
     def validate(self, transactions):
         """Validates transactions based on the provided config data."""
@@ -83,7 +85,7 @@ class TransactionValidator:
             for institute, data in self.config['institutes'].items():
                 if 'validate' in data:
                     self.logger.debug(f"Validating institute: {institute}")
-                    validate_list = sorted(data['validate'], key=lambda x: x['date'])  # Sort by date
+                    validate_list = sorted(data['validate'], key=lambda x: x['date'])
                     self.logger.debug(f"Sorted validation data: {validate_list}")
 
                     # Filter the validation data to include only values within the date range
