@@ -50,7 +50,7 @@ class ExtractorFactory:
             ),
             (
                 lambda text, lower_text: "barclaycard" in lower_text or "barcdehaxx" in lower_text,
-                "code.extractor.pdf.barclay",
+                "code.extractor.pdf.barclays",
                 "BarclaysPDFExtractor"
             ),
         ]

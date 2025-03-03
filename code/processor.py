@@ -35,7 +35,6 @@ class TransactionProcessor:
         if self.from_date or self.to_date:
             filtered = []
             for transaction in self.all_transactions:
-                print(transaction)
                 if self.from_date and transaction.getDictionary().get("date") < self.from_date:
                     continue
                 if self.to_date and transaction.getDictionary().get("date") > self.to_date:
