@@ -31,6 +31,8 @@ class Transaction:
         self.id                     = None                              # Obligatoric: The unique identifier of the transaction
         self.related_transaction_id = None                              # Optional: ID of the related transaction
         self.valuta_date            = None                              # Optional: Date when the booking was ordered
+        self.type                   = None
+        self.medium                 = None
         
 
     def setValutaDate(self, date_string):
@@ -152,7 +154,7 @@ class Transaction:
             "date":         date,           # date can be either a string (date)
             "id":           str,            # id can be either a string
             "description":  str,            # description should be a string (optional)
-            "invoice":      Invoice,        # invoice should be a string (optional)
+            "invoice":      Invoice,        
         }
         
         for var_name, expected_type in validations.items():
@@ -204,6 +206,8 @@ class Transaction:
             "valuta_date":              self.valuta_date and self.valuta_date.strftime("%Y-%m-%d") or self.date.strftime("%Y-%m-%d"),
             "source":                   self.source,
             "time":                     self._get_time_with_tz(),
+            "medium":                   self.medium,
+            "type":                     self.type,
             "related_transaction_id":   self.related_transaction_id,
         }
         for key, value in self.partner.getDictionary().items():
