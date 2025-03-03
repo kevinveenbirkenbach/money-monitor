@@ -51,20 +51,20 @@ class TransactionBuilder:
 
         # Zusätzliche Informationen parsen
         for info in additional_infos:
+            # Verarbeite mehrere Keys aus demselben Dictionary
             if "id" in info:
                 transaction.id = info["id"]
-                if "description" in info:
-                    if transaction.description:
-                        transaction.description += " "
-                    transaction.description += info["description"]
-            elif "mandate_reference" in info:
-                transaction.invoice.mandate_reference = info["mandate_reference"]
-            elif "customer_reference" in info:
-                transaction.invoice.customer_reference = info["customer_reference"]
-            elif "description" in info:
+            if "partner_institute" in info:
+                transaction.partner.institute = info["partner_institute"]
+            if "description" in info:
                 if transaction.description:
                     transaction.description += " "
                 transaction.description += info["description"]
+            if "mandate_reference" in info:
+                transaction.invoice.mandate_reference = info["mandate_reference"]
+            if "customer_reference" in info:
+                transaction.invoice.customer_reference = info["customer_reference"]
+
 
         if not transaction.id:
             transaction.id = ""
