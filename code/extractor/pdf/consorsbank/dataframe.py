@@ -3,79 +3,63 @@ import pandas as pd
 
 def extract_kontoauszug(pdf_path):
     """
-    Liest das PDF ein und erzeugt einen DataFrame,
-    bei dem jede neue Zeile durch einen der folgenden
-    Trigger-Texte eingeleitet wird (case-sensitive):
-        - '*** Kontostand zum'
-        - 'LASTSCHRIFT'
-        - 'EURO-UEBERW.'
-        - 'GEBUEHREN'
-
-    Die Zuordnung der Wörter zu Spalten erfolgt anhand
-    fester X-Koordinaten.
+    Liest das PDF ein und erzeugt einen DataFrame, 
+    wobei jede Zeile anhand ihrer `top`-Koordinate definiert wird. 
+    Keine Trigger-Wörter mehr für Zeilentrennung.
+    Die Zuordnung der Wörter zu Spalten erfolgt anhand fester X-Koordinaten.
     """
-    # 1) Feste Spaltenbereiche laut deiner Debug-Ausgabe:
+    margin = 30
+    min_top_threshold=10
     columns = {
-        "Text/Verwendungszweck": (46.2, 153.204),
-        "Datum": (233.1, 261.101),
-        "PNNr": (272.75, 295.251),
-        "Wert": (311.55, 331.547),
-        "Soll": (433.45, 449.952),
-        "Haben": (521.6, 549.099)
+        "Text/Verwendungszweck": (46.2 -margin, 153.204 +margin),
+        "Datum": (233.1 - margin, 261.101 + margin),
+        "PNNr": (272.75 - margin, 295.251 + margin),
+        "Wert": (311.55 - margin, 331.547 + margin),
+        "Soll": (433.45 - margin, 449.952 + margin),
+        "Haben": (521.6 - margin, 549.099 + margin)
     }
 
-    # 2) Trigger-Wörter (case-sensitive) für einen Zeilenumbruch
-    triggers = ["*** Kontostand zum", "LASTSCHRIFT", "EURO-UEBERW.", "GEBUEHREN", "DAUERAUFTRAG", "GUTSCHRIFT"]
-
-    # Hier sammeln wir alle Zeilen
     rows = []
-    # Die aktuelle Zeile (Dictionary mit Spalten)
     current_row = None
+    last_top = None  # Hilfsvariable, um Zeilen anhand `top` zu gruppieren
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            # words ist eine Liste von Dictionaries mit Koordinaten und Text
             words = page.extract_words()
 
             for w in words:
                 text = w["text"].strip()
                 x_left = w["x0"]
                 x_right = w["x1"]
+                top = w["top"]
 
-                # (A) Prüfen, ob dieses Wort einer der Trigger ist
-                if text in triggers:
-                    # 1) Falls schon eine Zeile existiert, beenden wir sie
+                if top < min_top_threshold:
+                    continue  # Wörter, die oberhalb der Höhe liegen, überspringen
+
+                # Wenn wir eine neue Zeile erkennen, basierend auf dem Unterschied in der `top`-Koordinate
+                if last_top is None or abs(last_top - top) > 4:  # Wenn der Unterschied in der Höhe zu groß ist
                     if current_row:
                         rows.append(current_row)
-                    # 2) Neue Zeile anlegen
                     current_row = {col: "" for col in columns.keys()}
-                    # Optional: Trigger direkt in die Spalte "Text/Verwendungszweck" schreiben
-                    # (falls du das möchtest und es immer dort hingehört)
-                    # current_row["Text/Verwendungszweck"] = text + " "
-                    #
-                    # An dieser Stelle geht es direkt weiter zur nächsten Word-Schleife
-                    # *ohne* nochmal unten die Spaltenzuordnung zu durchlaufen.
-                    # Wenn du es lieber in die Spalte per Koordinate packen willst,
-                    # nimm kein 'continue'.
-                    # 
-                    # Hier machen wir NICHT continue, damit pdfplumbers x-Koordinate
-                    # ggf. auch eine andere Spalte treffen kann, falls gewünscht.
 
-                # (B) Wenn wir eine aktive Zeile haben, verteilen wir die Wörter
-                if current_row:
-                    assigned = False
-                    for col_name, (col_min, col_max) in columns.items():
-                        if x_left >= col_min and x_right <= col_max:
-                            current_row[col_name] += text + " "
-                            assigned = True
-                            break
-                    # Falls nichts passt, ignorieren wir das Wort
-                    # (oder du definierst eine "Rest"-Spalte)
+                # Nun weisen wir das Wort der entsprechenden Spalte zu, basierend auf den X-Koordinaten
+                assigned = False
+                for col_name, (col_min, col_max) in columns.items():
+                    if x_left >= col_min and x_right <= col_max:
+                        current_row[col_name] += text + " "
+                        assigned = True
+                        break
+                
+                # Wenn das Wort nicht in eine Spalte passt, ignorieren wir es
+                if not assigned:
+                    continue
+
+                # Speichern der aktuellen `top`-Position für die nächste Zeile
+                last_top = top
 
         # Am Ende der letzten Seite noch die letzte Zeile abschließen
         if current_row:
             rows.append(current_row)
 
-    # 3) DataFrame bauen
     df = pd.DataFrame(rows)
     return df
