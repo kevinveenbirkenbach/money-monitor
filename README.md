@@ -51,12 +51,12 @@ This command will:
 
 Run the main script to extract transactions from bank documents and invoices:
 ```bash
-python main.py <input_paths> <output_base> [options]
+momo <input_paths> <output_base> [options]
 ```
 
 Example:
 ```bash
-python main.py "/path/to/documents" "/path/to/output/transactions" --csv --html --from 2023-01-01 --to 2023-12-31
+momo "/path/to/documents" "/path/to/output/transactions" --csv --html --from 2023-01-01 --to 2023-12-31
 ```
 
 ### Options
