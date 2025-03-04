@@ -5,7 +5,7 @@ from code.model.transaction import Transaction
 from code.logger import Logger
 
 
-class ConsorsbankMapper:
+class ConsorsbankDataframeMapper:
     """
     Maps rows from a Consorsbank PDF DataFrame to a list of Transaction objects.
     
@@ -23,8 +23,9 @@ class ConsorsbankMapper:
     """
     TRIGGERS = ["*** Kontostand zum", "LASTSCHRIFT", "GEBUEHREN", "EURO-UEBERW.", "GUTSCHRIFT", "DAUERAUFTRAG"]
 
-    def __init__(self, logger:Logger):
+    def __init__(self, logger:Logger,source:str):
         self.logger = logger
+        self.source = source
 
     def map_transactions(self, df: pd.DataFrame) -> List[Transaction]:
         transactions: List[Transaction] = []
@@ -45,7 +46,7 @@ class ConsorsbankMapper:
                     transactions.append(current_tx)
                 
                 # Start a new transaction
-                current_tx = Transaction()
+                current_tx = Transaction(self.logger,self.source)
                 
                 # If it's not the *** Kontostand zum, we treat the text as the type
                 # (If you want *** Kontostand zum to be a type, remove this check.)
