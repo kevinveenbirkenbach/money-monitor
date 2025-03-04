@@ -19,4 +19,5 @@ mapped_transactions = dataframemapper.map_transactions(df)
 print(mapped_transactions)
 df.to_csv("kontoauszug.csv", index=False, encoding="utf-8-sig")
 for transaction in mapped_transactions:
-    print(transaction)
+    transaction.isValid()
+    print(transaction.getDictionary())

@@ -9,7 +9,7 @@ class ConsorsbankDataframeMapper:
     """
     Maps rows from a Consorsbank PDF DataFrame to a list of Transaction objects.
     
-    A new transaction starts when the 'Text/Verwendungszweck' contains
+    A new transaction starts whenever the 'Text/Verwendungszweck' contains
     one of these triggers:
         - *** Kontostand zum
         - LASTSCHRIFT
@@ -18,139 +18,128 @@ class ConsorsbankDataframeMapper:
         - GUTSCHRIFT
         - DAUERAUFTRAG
     
-    The next lines populate partner info, description, date, PNNr, and value
-    until the next trigger is found. Non-mappable lines produce a debug message.
+    We first collect rows in 'blocks' until the next trigger is found.
+    Then each block is mapped to a single Transaction object.
     """
     TRIGGERS = ["*** Kontostand zum", "LASTSCHRIFT", "GEBUEHREN", "EURO-UEBERW.", "GUTSCHRIFT", "DAUERAUFTRAG"]
 
-    def __init__(self, logger:Logger,source:str):
+    def __init__(self, logger: Logger, source: str):
         self.logger = logger
         self.source = source
+        self.id = 0
+        
+    def getId(self):
+        self.id += 1
+        return self.id
 
     def map_transactions(self, df: pd.DataFrame) -> List[Transaction]:
-        transactions: List[Transaction] = []
-        current_tx: Optional[Transaction] = None
-        line_index = 0  # We'll track which "line" of the transaction we're on (1..5)
+        """
+        Main entry point: 
+        1) Split the DataFrame rows into blocks, each block ends when a new trigger is found.
+        2) Map each block to a Transaction.
+        """
+        blocks = self._split_into_blocks(df)
+        transactions = []
+
+        for idx, block in enumerate(blocks):
+            transaction = self._map_block_to_transaction(block)
+            if transaction:
+                transactions.append(transaction)
+            else:
+                # Optionally log if the block couldn't be mapped
+                self.logger.debug(f"Block {idx} could not be mapped: {[r.to_dict() for r in block]}")
+
+        return transactions
+
+    def _split_into_blocks(self, df: pd.DataFrame) -> List[List[pd.Series]]:
+        """
+        Splits the DataFrame into a list of blocks (each block is a list of rows).
+        A new block is started whenever we encounter a trigger in 'Text/Verwendungszweck'.
+        """
+        blocks: List[List[pd.Series]] = []
+        current_block: List[pd.Series] = []
 
         for i, row in df.iterrows():
             text_val = str(row.get("Text/Verwendungszweck", "")).strip()
-            date_val = str(row.get("Datum", "")).strip()
-            pnnr_val = str(row.get("PNNr", "")).strip()
-            soll_val = str(row.get("Soll", "")).strip()
-            haben_val = str(row.get("Haben", "")).strip()
-            
-            # 1) Check if this row is a trigger for a new transaction
+
+            # If we find a trigger, we finish the current block (if any) and start a new one
             if any(trigger in text_val for trigger in self.TRIGGERS):
-                # If we were building a transaction, save it first
-                if current_tx is not None:
-                    transactions.append(current_tx)
-                
-                # Start a new transaction
-                current_tx = Transaction(self.logger,self.source)
-                
-                # If it's not the *** Kontostand zum, we treat the text as the type
-                # (If you want *** Kontostand zum to be a type, remove this check.)
-                if text_val != "*** Kontostand zum":
-                    current_tx.type = text_val
-                
-                line_index = 1
-                # Don't skip the bounding-box columns; maybe we want to see if date/soll/haben is also in this row
-                # so we continue to parse the rest of this row below if needed.
-                continue
-
-            # 2) If there's no active transaction, we can't map anything
-            if not current_tx:
-                if self.logger:
-                    self.logger.debug(f"Row {i} not mapped (no active transaction): {row.to_dict()}")
-                continue
-
-            # 3) Map lines to transaction fields
-            if line_index == 1:
-                # This line is the partner name
-                current_tx.partner_name = text_val
-                line_index += 1
-            elif line_index == 2:
-                # This line is the partner institute
-                current_tx.partner_institute = text_val
-                line_index += 1
-            elif line_index == 3:
-                # This line is the description
-                # If you want to accumulate description across multiple lines, 
-                # you could append text_val instead of overwriting it
-                current_tx.description = text_val
-                line_index += 1
-            elif line_index == 4:
-                # This line presumably has date, PNNr, value
-                current_tx.id = pnnr_val  # e.g. '8420'
-                
-                # Parse the date
-                # If date_val has multiple dates, e.g. "31.10.22 10.10.", 
-                # you might need more complex logic. Example:
-                dates_found = date_val.split()
-                if len(dates_found) >= 1:
-                    current_tx.date = self._parse_date(dates_found[0])
-                if len(dates_found) >= 2:
-                    current_tx.valuta = self._parse_date(dates_found[1])
-                
-                # Evaluate the value from Soll or Haben
-                current_tx.value = self._parse_value(soll_val, haben_val)
-                
-                # Once we've read line 4, we consider this transaction complete
-                # If you want more lines, adapt line_index usage accordingly.
-                line_index = 0
+                # Falls der current_block schon gefüllt ist, speichern wir ihn
+                if current_block:
+                    blocks.append(current_block)
+                # Neuer Block mit der aktuellen Zeile als Start
+                current_block = [row]
             else:
-                # If we get here, we have an unexpected extra line
-                if self.logger:
-                    self.logger.debug(f"Row {i} not mapped (unexpected line index={line_index}): {row.to_dict()}")
+                # Einfach zur aktuellen Block-Liste hinzufügen
+                current_block.append(row)
 
-        # 4) End of loop: if there's an unfinished transaction, add it
-        if current_tx:
-            transactions.append(current_tx)
+        # Am Ende den letzten Block noch anhängen
+        if current_block:
+            blocks.append(current_block)
 
-        return transactions
+        return blocks
+
+    def _map_block_to_transaction(self, block: List[pd.Series]) -> Optional[Transaction]:
+        first_row = block[0]
+        text_val = str(first_row.get("Text/Verwendungszweck", "")).strip()
+        if "*** Kontostand zum" not in text_val:
+            transaction = Transaction(self.logger, self.source)
+            transaction.id = str(first_row.get("PNNr", "")).strip()
+
+            #transaction.setValutaDate(first_row.get("Wert",""))
+            #transaction.setTransactionDate(first_row.get("Datum", ""))
+            transaction.setValutaDate("1993-09-07")
+            transaction.setTransactionDate("1993-09-07")
+            transaction.currency = "EUR"
+            transaction.owner.name = "Max"
+            transaction.owner.id = "testid"
+            transaction.owner.institute = "Consorsbank"
+        
+            transaction.type = text_val  # e.g. "LASTSCHRIFT", "GEBUEHREN", etc.
+
+            partner_name_row = block[1] if len(block) > 1 else None
+            partner_institute_row = block[2] if len(block) > 2 else None
+            description_row = block[3] if len(block) > 3 else None
+            data_row = block[4] if len(block) > 4 else None
+
+            transaction.partner.name = str(partner_name_row.get("Text/Verwendungszweck", "")).strip() or "Moritz"
+            transaction.partner.institute = str(partner_institute_row.get("Text/Verwendungszweck", "")).strip() or "Blööb"
+
+            if description_row is not None:
+                transaction.description = str(description_row.get("Text/Verwendungszweck", "")).strip()
+
+            transaction.value = self._parse_value(
+                str(first_row.get("Soll", "")).strip(),
+                str(first_row.get("Haben", "")).strip()
+            ) or 0
+            return transaction
 
     def _parse_date(self, date_str: str) -> str:
         """
         Converts a date like '31.10.22' to '2022-10-31'.
         If parsing fails, returns the original string or logs a debug message.
         """
-        # Simple example with regex
         match = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{2,4})', date_str)
         if match:
             day, month, year = match.groups()
-            # Heuristics to handle 2-digit vs 4-digit years:
             if len(year) == 2:
-                year = "20" + year  # e.g. '22' -> '2022'
-            # Build ISO string
+                year = "20" + year
             return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
         else:
-            if self.logger:
-                self.logger.debug(f"Could not parse date from '{date_str}'")
-            return date_str  # fallback
+            self.logger.debug(f"Could not parse date from '{date_str}'")
+            return date_str
 
     def _parse_value(self, soll_str: str, haben_str: str) -> Optional[float]:
-        """
-        Parses a numeric value from either the Soll (negative) or Haben (positive) column.
-        Example:
-            soll_str = '5.000,00-' -> -5000.00
-            haben_str = '19.159,00+' -> 19159.00
-        """
         if soll_str:
-            # Remove dots, convert comma to dot, remove trailing '-' if any
             val_str = soll_str.replace('.', '').replace(',', '.').replace('-', '')
             try:
                 return -float(val_str)
             except ValueError:
-                if self.logger:
-                    self.logger.debug(f"Could not parse soll value from '{soll_str}'")
-                return None
+                self.logger.debug(f"Could not parse soll value from '{soll_str}'")
         elif haben_str:
-            # Remove dots, convert comma to dot, remove trailing '+' if any
             val_str = haben_str.replace('.', '').replace(',', '.').replace('+', '')
             try:
                 return float(val_str)
             except ValueError:
-                if self.logger:
-                    self.logger.debug(f"Could not parse haben value from '{haben_str}'")
-                return None
+                self.logger.debug(f"Could not parse haben value from '{haben_str}'")
         return None

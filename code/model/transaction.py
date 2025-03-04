@@ -42,7 +42,7 @@ class Transaction:
         self.logger.debug(f"Attempting to parse valuta date: '{date_string}'")
 
         date_string = date_string.strip().replace('"', '')
-        for fmt in ("%d.%m.%Y", "%d.%m.%y"):
+        for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
             try:
                 parsed_date = datetime.strptime(date_string, fmt).date()
                 self.valuta_date = parsed_date
@@ -51,8 +51,7 @@ class Transaction:
                 continue
         self.logger.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
 
-
-    def setTransactionDate(self, date_string):
+    def setTransactionDate(self, date_string:str)->None:
         # Debugging statement to show the raw date_string
         self.logger.debug(f"Attempting to parse transaction date: '{date_string}'")
         
