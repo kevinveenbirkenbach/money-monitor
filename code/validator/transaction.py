@@ -73,7 +73,7 @@ class Validator:
 from datetime import datetime
 
 class TransactionValidator:
-    def __init__(self, config: yaml, logger: logging.Logger, from_date: str = None, to_date: str = None):
+    def __init__(self, config: yaml, logger: Logger, from_date: str = None, to_date: str = None):
         self.config = config
         self.logger = logger
         self.from_date = createComparatableTime(datetime.strptime(from_date, "%Y-%m-%d")) if from_date else None

@@ -33,6 +33,7 @@ class Transaction:
         self.valuta_date            = None                              # Optional: Date when the booking was ordered
         self.type                   = None
         self.medium                 = None
+        self.posting_number         = None
         
     def setValutaDate(self, date_string):
         """
@@ -210,6 +211,7 @@ class Transaction:
             "medium":                   self.medium,
             "type":                     self.type,
             "related_transaction_id":   self.related_transaction_id,
+            "posting_number":           self.posting_number,
         }
         for key, value in self.partner.getDictionary().items():
             dictionary["partner_" + key]  = value        

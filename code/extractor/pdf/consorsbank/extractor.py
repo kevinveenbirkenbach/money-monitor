@@ -3,12 +3,10 @@ from code.model.transaction import Transaction
 from ..base import PDFExtractor
 import yaml
 from code.logger import Logger
-from .amount_parser import AmountParser
-from .balance_parser import BalanceParser
-from .date_parser import DateParser
-from .transaction_parser import TransactionParser
 from code.converter.pdf import PDFConverter
-from code.logger import Logger
+from .dataframe_mapper import ConsorsbankDataframeMapper
+from .dataframe import ConsorbankDataFrame
+from .text import TextExtractor
 
 class ConsorsbankPDFExtractor(PDFExtractor):
     """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
@@ -16,50 +14,13 @@ class ConsorsbankPDFExtractor(PDFExtractor):
     def __init__(self, source: str, logger: Logger, config: yaml, pdf_converter:PDFConverter):
         super().__init__(source, logger, config, pdf_converter)
         self.previous_balance = None
+        self.transactions = None
+        textextractor = TextExtractor(self.logger,self.pdf_converter.getLazyFullText())
+        dataframe = ConsorbankDataFrame(self.source,self.logger)
+        dataframe_mapper = ConsorsbankDataframeMapper(self.logger,self.source,textextractor)
+        self.transactions = dataframe_mapper.map_transactions(dataframe.extract_data())
     
     def extract_transactions(self):
-        transactions = []
-        text = self.pdf_converter.getText()
-        global_year = self._extract_year(text)
-        block_pattern = re.compile(
-            r'^(?P<type>LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n'
-            r'(?P<block>.*?)(?=^(?:LASTSCHRIFT|EURO-UEBERW\.|GUTSCHRIFT)\s*\n|\Z)',
-            re.DOTALL | re.MULTILINE
-        )
-        
-        for m_block in block_pattern.finditer(text):
-            transaction = Transaction(logger=self.logger, source=self.source)
-            transaction.type = m_block.group('type').strip()
-            block = m_block.group('block')
-            datum_raw, wert_raw, amount_extracted, datum_iso = TransactionParser.parse_transaction_details(block, transaction.type, global_year, transaction)
-            current_balance = BalanceParser.parse_balance(block)
-            
-            if transaction.type == "GUTSCHRIFT" and (not amount_extracted or AmountParser.parse_amount(amount_extracted) is None):
-                if self.previous_balance is not None and current_balance is not None:
-                    diff = current_balance - self.previous_balance
-                    amount_extracted = AmountParser.format_amount(diff)
-                else:
-                    amount_extracted = ""
-                    
-            amount_val = AmountParser.parse_amount(amount_extracted)
-            transaction.owner.institute = "Consorsbank"
-            transaction.owner.name = "Testowner"
-            transaction.owner.id = "Testid"
-            transaction.setValue(amount_val or 0.0)
-            transaction.description = block.strip().replace(transaction.partner.name, "")
-            transaction.currency = "EUR"
-            transaction.setTransactionDate(datum_iso or "2000-01-01")
-            transaction.setTransactionId()
-                
-            transactions.append(transaction)
-            if current_balance is not None:
-                self.previous_balance = current_balance
-        return transactions
+        return self.transactions
 
-    def _extract_year(self, text):
-        """Extrahiert das Jahr aus dem Text, falls vorhanden."""
-        year_match = re.search(r'\b\d{2}\.\d{2}\.(\d{2,4})\b', text)
-        if year_match:
-            year_str = year_match.group(1)
-            return "20" + year_str if len(year_str) == 2 else year_str
-        return None
+

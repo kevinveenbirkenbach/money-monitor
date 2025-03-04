@@ -3,7 +3,8 @@ import re
 from typing import List, Optional
 from code.model.transaction import Transaction
 from code.logger import Logger
-
+from .text import TextExtractor
+from .date_parser import DateParser
 
 class ConsorsbankDataframeMapper:
     """
@@ -23,14 +24,11 @@ class ConsorsbankDataframeMapper:
     """
     TRIGGERS = ["*** Kontostand zum", "LASTSCHRIFT", "GEBUEHREN", "EURO-UEBERW.", "GUTSCHRIFT", "DAUERAUFTRAG"]
 
-    def __init__(self, logger: Logger, source: str):
+    def __init__(self, logger: Logger, source: str, textextractor:TextExtractor):
         self.logger = logger
         self.source = source
-        self.id = 0
-        
-    def getId(self):
-        self.id += 1
-        return self.id
+        self.textextractor = textextractor
+        self.year = textextractor.getYear()
 
     def map_transactions(self, df: pd.DataFrame) -> List[Transaction]:
         """
@@ -82,37 +80,47 @@ class ConsorsbankDataframeMapper:
     def _map_block_to_transaction(self, block: List[pd.Series]) -> Optional[Transaction]:
         first_row = block[0]
         text_val = str(first_row.get("Text/Verwendungszweck", "")).strip()
-        if "*** Kontostand zum" not in text_val:
+        if "*** Kontostand zum" not in text_val and "Consorsbank" not in text_val:
             transaction = Transaction(self.logger, self.source)
-            transaction.id = str(first_row.get("PNNr", "")).strip()
-
-            #transaction.setValutaDate(first_row.get("Wert",""))
-            #transaction.setTransactionDate(first_row.get("Datum", ""))
-            transaction.setValutaDate("1993-09-07")
-            transaction.setTransactionDate("1993-09-07")
-            transaction.currency = "EUR"
-            transaction.owner.name = "Max"
-            transaction.owner.id = "testid"
+            transaction.posting_number = str(first_row.get("PNNr", "")).strip()
+            transaction.setValutaDate(DateParser.convert_to_iso(first_row.get("Wert",""),self.year))
+            transaction.setTransactionDate(DateParser.convert_to_iso(first_row.get("Datum", ""),self.year))
+            transaction.currency = self.textextractor.getCurrency()
+            transaction.owner.name = self.textextractor.getAccountHolder()
+            transaction.owner.id = self.textextractor.getIBAN()
             transaction.owner.institute = "Consorsbank"
-        
             transaction.type = text_val  # e.g. "LASTSCHRIFT", "GEBUEHREN", etc.
-
-            partner_name_row = block[1] if len(block) > 1 else None
-            partner_institute_row = block[2] if len(block) > 2 else None
-            description_row = block[3] if len(block) > 3 else None
-            data_row = block[4] if len(block) > 4 else None
-
-            transaction.partner.name = str(partner_name_row.get("Text/Verwendungszweck", "")).strip() or "Moritz"
-            transaction.partner.institute = str(partner_institute_row.get("Text/Verwendungszweck", "")).strip() or "Blööb"
-
-            if description_row is not None:
-                transaction.description = str(description_row.get("Text/Verwendungszweck", "")).strip()
-
+            transaction.partner.name = str(block[1].get("Text/Verwendungszweck", "")).strip()
+            transaction.partner.institute = str(block[2].get("Text/Verwendungszweck", "")).strip()
+            transaction.description = self._get_description(block)
             transaction.value = self._parse_value(
                 str(first_row.get("Soll", "")).strip(),
                 str(first_row.get("Haben", "")).strip()
             ) or 0
+            transaction.setTransactionId()
             return transaction
+    
+    def _get_description(self,block):
+        # Collect description lines from block[3] onward
+        description_lines = []
+        for row in block[3:]:
+            # Gather the non-empty values from all columns in this row
+            row_parts = []
+            for col_name, col_val in row.items():
+                val_str = str(col_val).strip()
+                if val_str:
+                    row_parts.append(val_str)
+            
+            # If this row has any non-empty columns, join them into a single string
+            if row_parts:
+                line_text = "".join(row_parts)
+                description_lines.append(line_text)
+
+        # Join all row strings into one final description
+        if description_lines:
+            description = " ".join(description_lines)
+        return description
+
 
     def _parse_date(self, date_str: str) -> str:
         """
