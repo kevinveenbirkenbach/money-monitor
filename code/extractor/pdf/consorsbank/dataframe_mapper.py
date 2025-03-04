@@ -5,6 +5,7 @@ from code.model.transaction import Transaction
 from code.logger import Logger
 from .text import TextExtractor
 from .date_parser import DateParser
+from .invoice import extract_and_remove_invoices
 
 class ConsorsbankDataframeMapper:
     """
@@ -97,6 +98,10 @@ class ConsorsbankDataframeMapper:
                 str(first_row.get("Soll", "")).strip(),
                 str(first_row.get("Haben", "")).strip()
             ) or 0
+            invoices, cleaned_text = extract_and_remove_invoices(transaction.description)
+            if invoices:
+                transaction.description = cleaned_text
+                transaction.invoice.id = "\n".join(invoices)
             transaction.setTransactionId()
             return transaction
     
