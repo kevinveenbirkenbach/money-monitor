@@ -1,9 +1,8 @@
 # 🤑 Money Monitor (momo)
-
-**Money Monitor** is a comprehensive Python tool for scanning, organizing, and logging your financial documents. It processes bank statement PDFs, CSV files, invoices, and more—automatically extracting transactions and sorting them into a unified financial log.
-
 ![GitHub license](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python version](https://img.shields.io/badge/Python-3.x-blue.svg)
+
+**Money Monitor** is a comprehensive Python tool for scanning, organizing, and logging your financial documents. It processes bank statement PDFs, CSV files, invoices, and more—automatically extracting transactions and sorting them into a unified financial log.
 
 ## 🎯 Purpose
 
