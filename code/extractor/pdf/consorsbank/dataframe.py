@@ -1,65 +1,75 @@
 import pdfplumber
 import pandas as pd
+from code.logger import Logger
 
-def extract_kontoauszug(pdf_path):
-    """
-    Liest das PDF ein und erzeugt einen DataFrame, 
-    wobei jede Zeile anhand ihrer `top`-Koordinate definiert wird. 
-    Keine Trigger-Wörter mehr für Zeilentrennung.
-    Die Zuordnung der Wörter zu Spalten erfolgt anhand fester X-Koordinaten.
-    """
-    margin = 30
-    min_top_threshold=10
-    columns = {
-        "Text/Verwendungszweck": (46.2 -margin, 153.204 +margin),
-        "Datum": (233.1 - margin, 261.101 + margin),
-        "PNNr": (272.75 - margin, 295.251 + margin),
-        "Wert": (311.55 - margin, 331.547 + margin),
-        "Soll": (433.45 - margin, 449.952 + margin),
-        "Haben": (521.6 - margin, 549.099 + margin)
-    }
+class ConsorbankDataFrame:
+    def __init__(self, pdf_path:str, logger:Logger):
+        """
+        Initializes the ConsorbankDataFrame class with the provided PDF path,
+        minimum top threshold for filtering words, and margin for defining column ranges.
 
-    rows = []
-    current_row = None
-    last_top = None  # Hilfsvariable, um Zeilen anhand `top` zu gruppieren
+        :param pdf_path: Path to the PDF file to be processed.
+        """
+        self.pdf_path = pdf_path
+        self.logger = logger
+        self.margin=40
+        self.top_diference=4
+        
+        # Column definitions with margins applied
+        self.columns = {
+            "Text/Verwendungszweck": (46.2 - self.margin, 153.204 + self.margin),
+            "Datum": (233.1 - 100, 261.101 + 6),
+            "PNNr": (272.75 - 6, 295.251 + 10),
+            "Wert": (311.55 - 10, 331.547 + 50),
+            "Soll": (433.45 - 50, 449.952 + 35),
+            "Haben": (521.6 - 35, 549.099 + 100)
+        }
 
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            words = page.extract_words()
+    def extract_data(self):
+        """
+        Extracts data from the PDF and returns it as a pandas DataFrame.
+        The words in the PDF are assigned to columns based on their X-coordinates and grouped by `top` position.
+        """
+        rows = []
+        current_row = None
+        last_top = None 
 
-            for w in words:
-                text = w["text"].strip()
-                x_left = w["x0"]
-                x_right = w["x1"]
-                top = w["top"]
+        # Open the PDF file
+        with pdfplumber.open(self.pdf_path) as pdf:
+            for page in pdf.pages:
+                words = page.extract_words()
 
-                if top < min_top_threshold:
-                    continue  # Wörter, die oberhalb der Höhe liegen, überspringen
+                for word in words:
+                    text = word["text"].strip()
+                    x_left = word["x0"]
+                    x_right = word["x1"]
+                    top = word["top"]
 
-                # Wenn wir eine neue Zeile erkennen, basierend auf dem Unterschied in der `top`-Koordinate
-                if last_top is None or abs(last_top - top) > 4:  # Wenn der Unterschied in der Höhe zu groß ist
-                    if current_row:
-                        rows.append(current_row)
-                    current_row = {col: "" for col in columns.keys()}
+                    # If we detect a new row based on the `top` position difference
+                    if last_top is None or abs(last_top - top) > self.top_diference:  # Adjust the difference threshold as needed
+                        if current_row:
+                            rows.append(current_row)
+                        current_row = {col: "" for col in self.columns.keys()}
 
-                # Nun weisen wir das Wort der entsprechenden Spalte zu, basierend auf den X-Koordinaten
-                assigned = False
-                for col_name, (col_min, col_max) in columns.items():
-                    if x_left >= col_min and x_right <= col_max:
-                        current_row[col_name] += text + " "
-                        assigned = True
-                        break
-                
-                # Wenn das Wort nicht in eine Spalte passt, ignorieren wir es
-                if not assigned:
-                    continue
+                    # Assign the word to the appropriate column based on its X-coordinate
+                    assigned = False
+                    for col_name, (col_min, col_max) in self.columns.items():
+                        if x_left >= col_min and x_right <= col_max:
+                            current_row[col_name] += text + " "
+                            assigned = True
+                            break
 
-                # Speichern der aktuellen `top`-Position für die nächste Zeile
-                last_top = top
+                    # If the word doesn't fit into any column, we ignore it
+                    if not assigned:
+                        continue
 
-        # Am Ende der letzten Seite noch die letzte Zeile abschließen
-        if current_row:
-            rows.append(current_row)
+                    # Store the current `top` position for the next row
+                    last_top = top
 
-    df = pd.DataFrame(rows)
-    return df
+            # After processing all pages, append the last row
+            if current_row:
+                rows.append(current_row)
+
+        # Convert the rows into a DataFrame
+        df = pd.DataFrame(rows)
+        return df

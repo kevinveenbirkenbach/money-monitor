@@ -1,12 +1,12 @@
 from datetime import datetime, date
-import logging
 from typing import List
 from code.model.transaction import Transaction
 import yaml
 from code.helper.datetime import createComparatableTime
+from code.logger import Logger
 
 class Validator:
-    def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, margin: float, logger: logging.Logger, institute: str = None):
+    def __init__(self, start_value: float, start_date: date, end_value: float, end_date: date, margin: float, logger: Logger, institute: str = None):
         self.start_value = start_value
         self.start_date = createComparatableTime(start_date)
         self.end_value = end_value
