@@ -37,7 +37,7 @@ def main():
                 config_data = yaml.safe_load(f)
         except Exception as e:
             logger.error(f"Failed to load config file '{args.config}': {e}")
-            config_data = {}
+            sys.exit(1)
 
     # Pass config_data to the TransactionProcessor
     processor = TransactionProcessor(

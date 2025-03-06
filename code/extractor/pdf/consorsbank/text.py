@@ -45,7 +45,7 @@ class TextExtractor:
             if len(year) == 2:
                 year = "20" + year  # e.g. '22' -> '2022'
             return year
-        self.logger.error("No valid date/year found.")
+        self.logger.warning("No valid date/year found.")
         return None
 
     def getCurrency(self)->str:
