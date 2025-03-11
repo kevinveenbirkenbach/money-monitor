@@ -6,7 +6,7 @@ from code.model.log import Log
 from ..abstract import AbstractCSVExtractor
 from code.model.account import Account, OwnerAccount
 
-class PayPalCSVExtractor(AbstractCSVExtractor):
+class PaypalCSVExtractor(AbstractCSVExtractor):
     def getConfigurationElement(self,identifiers:[str]):
         filtered = self.configuration.configuration_file_data
         for element in identifiers:

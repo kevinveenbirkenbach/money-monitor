@@ -11,6 +11,7 @@ class Log:
 
     def __init__(self, configuration:Configuration):
         self.configuration = configuration
+        self.configuration.log = self
         self.warnings_count = 0
         self.success_count = 0
         self.error_count = 0
