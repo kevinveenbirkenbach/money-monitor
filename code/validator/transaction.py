@@ -133,7 +133,7 @@ class TransactionValidator:
                             self.log.error(f"Validation failed for {institute} between {start_point['date']} and {end_point['date']}")
 
                             # Log all transactions in the date range and their values
-                            self.log.debug(f"Displaying transactions for {institute} between {start_point['date']} and {end_point['date']}:")
+                            self.log.debug(f"{len(institute_transactions)} transactions in total.\nDisplaying transactions for {institute} between {start_point['date']} and {end_point['date']}:")
                             for txn in institute_transactions:
                                 txn_date = txn.date
                                 if start_point['date'] <= txn_date <= end_point['date']:

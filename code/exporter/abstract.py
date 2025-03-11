@@ -6,7 +6,7 @@ from code.model.configuration import Configuration
 from code.model.transactions_wrapper import TransactionsWrapper
 
 class AbstractExporter(ABC):
-    def __init__(self, transactions_wrapper:TransactionsWrapper, configuration:Configuration, log:Log):
+    def __init__(self, transactions_wrapper:TransactionsWrapper, configuration:Configuration, log:Log, output_file:str):
         self.output_file = output_file
         self.log = log
         self.configuration = configuration

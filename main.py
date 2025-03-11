@@ -6,6 +6,7 @@ from code.processor.load import LoadProcessor
 from code.processor.filter import FilterProcessor
 from code.model.configuration import Configuration
 from code.processor.validator import ValidatorProcessor
+from code.processor.exporter import ExportProcessor
 
 def main():
     parser = argparse.ArgumentParser(
@@ -55,6 +56,9 @@ def main():
         configuration=configuration
         ).process()
     
+    # Sort Transactions by Date
+    loaded_transactions_wrapper.sortByDate()
+    
     # Filter
     filtered_transactions_wrapper=FilterProcessor(
         log=log,
@@ -70,7 +74,7 @@ def main():
         ).process()
 
     # Export
-    exported_transactions_wrapper=ValidatorProcessor(
+    exported_transactions_wrapper=ExportProcessor(
         log=log,
         configuration=configuration,
         transactions_wrapper=valid_transactions_wrapper

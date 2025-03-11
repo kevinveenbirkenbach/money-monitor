@@ -13,7 +13,7 @@ class ConsorbankDataFrame:
         self.pdf_path = pdf_path
         self.log = log
         self.margin=40
-        self.top_diference=4
+        self.top_diference=6
         
         # Column definitions with margins applied
         self.columns = {

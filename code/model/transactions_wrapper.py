@@ -46,6 +46,6 @@ class TransactionsWrapper:
     def sortByDate(self):
         # Sorting the transactions by date, using the normalization method
         self.transactions = sorted(
-            transactions, 
-            key=lambda t: createComparatableTime(t.date)
-        )        
+            self.transactions, 
+            key=lambda transaction: transaction.getTransactionDatetime()
+        )
