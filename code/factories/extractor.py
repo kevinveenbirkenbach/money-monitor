@@ -28,28 +28,10 @@ class ExtractorFactory:
             ),
         ]
 
-        # Mappings for PDF-based extractors:
-        # Each entry is: (condition_func, module_name, class_name)
-        # condition_func receives (text, lower_text)
-        self.pdf_extractor_mappings = [
- #           (
- #               lambda text, lower_text: "paypal" in lower_text
- #                                        and ("händlerkonto-id" in lower_text
- #                                             or "transaktionsübersicht" in lower_text),
- #               "PayPal"
- #           ),
-            (
-                lambda text, lower_text: "ing-diba" in lower_text or "ingddeffxxx" in lower_text,
-                "Ing"
-            ),
-            (
-                lambda text, lower_text: "consorsbank" in lower_text or "kontoauszug" in lower_text,
-                "Consorsbank",
-            ),
-            (
-                lambda text, lower_text: "barclaycard" in lower_text or "barcdehaxx" in lower_text,
-                "Barclays"
-            ),
+        self.bank_types=[
+            'barclays',
+            'consorsbank',
+            'ing'
         ]
 
     def create_extractor(self, file_path):
@@ -57,7 +39,8 @@ class ExtractorFactory:
         Chooses and instantiates the correct extractor based on the file extension
         and file content. Returns an extractor instance or None if no match is found.
         """
-        file_type = os.path.splitext(file_path)[1].lower()
+        filename_without_filetype, file_type = os.path.splitext(file_path)
+        file_type = file_type.lower()
 
         # Handle CSV
         if file_type == ".csv":
@@ -75,6 +58,7 @@ class ExtractorFactory:
 
         # Handle PDF
         elif file_type == ".pdf":
+            bank_type=os.path.splitext(filename_without_filetype)[1].lower().replace('.','')
             pdf_converter = PDFConverter(self.log, file_path);
             
             first_page_text = pdf_converter.getFirstPage()
@@ -83,11 +67,9 @@ class ExtractorFactory:
             else:
                 return None
 
-            # Go through each PDF mapping
-            for condition_func, name in self.pdf_extractor_mappings:
-                if condition_func(first_page_text, lower_first_page_text):      
-                    return self._instantiate_extractor(name, file_type, file_path, pdf_converter)
-            self.log.info(f"No matching PDF extractor found for '{file_path}'.")
+            if bank_type in self.bank_types:    
+                return self._instantiate_extractor(bank_type, file_type, file_path, pdf_converter)
+            self.log.info(f"No matching PDF extractor found for bank type {bank_type} for file '{file_path}'.")
             return None
 
         # Unsupported extension
@@ -97,7 +79,7 @@ class ExtractorFactory:
 
     def _instantiate_extractor(self, name, file_type, file_path, pdf_converter=None):
         module_name = f"code.extractor.{file_type.lower().replace(".", "")}.{name.lower()}.extractor"
-        class_name = f"{name}{file_type.upper().replace(".", "")}Extractor"
+        class_name = f"{name.capitalize()}{file_type.upper().replace(".", "")}Extractor"
         """
         Dynamically imports the extractor module and instantiates the extractor class.
         """
