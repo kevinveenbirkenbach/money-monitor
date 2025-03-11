@@ -32,6 +32,7 @@ class Configuration:
         self.print_cmd=print_cmd
         self.recursive=recursive
         self._loadConfigurationFile()
+        self.log = None # Placeholder - Log sets itself 
         
     
     def setFromDate(self,from_date:str)->None:
@@ -49,7 +50,7 @@ class Configuration:
             with open(self.configuration_file, "r", encoding="utf-8") as f:
                 self.configuration_file_data = yaml.safe_load(f)
         except Exception as e:
-            log.error(f"Failed to load config file '{self.configuration_file}': {e}")
+            self.log.error(f"Failed to load config file '{self.configuration_file}': {e}")
             sys.exit(1)
     
     def getInputPaths(self)->[str]:
@@ -77,9 +78,13 @@ class Configuration:
         return self.print_cmd
     
     def getFromDatetime(self)->datetime:
+        if not self._from_date:
+            return None
         return datetime.combine(self._from_date, time(0, 0, 0)).replace(tzinfo=None)
 
     def getToDatetime(self)->datetime:
+        if not self._to_date:
+            return None
         return datetime.combine(self._to_date, time(23, 59, 59)).replace(tzinfo=None)
     
     def shouldRecursiveScan(self)->bool:
