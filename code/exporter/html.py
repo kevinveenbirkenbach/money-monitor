@@ -1,18 +1,20 @@
 from .abstract import AbstractExporter
 from code.model.log import Log
 from jinja2 import Environment, FileSystemLoader
+from datetime import datetime
 
 class HtmlExporter(AbstractExporter):
     def export(self)->None:
         if not self.doTransactionsExist():
             return
         filter_info = ""
+        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if self and self.configuration.getToDatetime():
-            filter_info = f"Filtered: {self.configuration.getFromDatetime()} to {self.configuration.getToDatetime()}"
+            filter_info = f"Filtered: {self.configuration.getFromDatetime()} to {self.configuration.getToDatetime()}<br />Created: {timestamp}"
         elif self.configuration.getFromDatetime():
-            filter_info = f"Filtered: on or after {self.configuration.getFromDatetime()}"
+            filter_info = f"Filtered: on or after {self.configuration.getFromDatetime()}<br />Created: {timestamp}"
         elif self.configuration.getToDatetime():
-            filter_info = f"Filtered: on or before {self.configuration.getToDatetime()}"
+            filter_info = f"Filtered: on or before {self.configuration.getToDatetime()}<br />Created: {timestamp} "
         
         icon_map = {
             "id": "bi bi-hash me-1",

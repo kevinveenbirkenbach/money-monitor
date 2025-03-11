@@ -101,7 +101,7 @@ class TransactionValidator:
 
                     # Check if there are any transactions associated with this institute
                     institute_transactions = [
-                        txn for txn in transactions if txn.owner.institute.lower() == institute
+                        transaction for transaction in transactions if transaction.owner.institute.lower() == institute
                     ]
 
                     if not institute_transactions:
@@ -134,10 +134,10 @@ class TransactionValidator:
 
                             # Log all transactions in the date range and their values
                             self.log.debug(f"{len(institute_transactions)} transactions in total.\nDisplaying transactions for {institute} between {start_point['date']} and {end_point['date']}:")
-                            for txn in institute_transactions:
-                                txn_date = txn.date
-                                if start_point['date'] <= txn_date <= end_point['date']:
-                                    self.log.debug(f"Transaction ID: {txn.id}, Date: {txn_date}, Value: {txn.value}, Description: {txn.description}")
+                            for transaction in institute_transactions:
+                                transaction_date = transaction.date
+                                if start_point['date'] <= transaction_date <= end_point['date']:
+                                    self.log.debug(f"Transaction ID: {transaction.id}, Date: {transaction_date}, Value: {transaction.value}, Description: {transaction.description}")
                         else:
                             self.log.debug(f"Validation passed for {institute} between {start_point['date']} and {end_point['date']}")
                 else:

@@ -66,6 +66,8 @@ def main():
         transactions_wrapper=loaded_transactions_wrapper
         ).process()
     
+    log.debug(f"{len(filtered_transactions_wrapper.getAll())} filtered.")
+    
     # Validate
     valid_transactions_wrapper=ValidatorProcessor(
         log=log,
@@ -73,12 +75,16 @@ def main():
         transactions_wrapper=filtered_transactions_wrapper
         ).process()
 
+    log.debug(f"{len(filtered_transactions_wrapper.getAll())} validated.")
+
     # Export
     exported_transactions_wrapper=ExportProcessor(
         log=log,
         configuration=configuration,
         transactions_wrapper=valid_transactions_wrapper
         ).process() 
+    
+    log.debug(f"{len(valid_transactions_wrapper.getAll())} exported.")
     
     if log.error_count > 0:
         log.warning(f"This program produced {log.error_count} errors.")
