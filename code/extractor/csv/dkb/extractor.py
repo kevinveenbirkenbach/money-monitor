@@ -1,7 +1,7 @@
 import csv
 from code.model.transaction import Transaction
-from code.logger import Logger
-from ..base import CSVExtractor
+from code.model.log import Log
+from ..abstract import AbstractCSVExtractor
 from code.model.account import Account, OwnerAccount
 
 class DKBCSVExtractor(CSVExtractor):
@@ -18,7 +18,7 @@ class DKBCSVExtractor(CSVExtractor):
             # Remove thousand separators and convert the decimal comma to a dot.
             return sign * float(amount_str.replace(".", "").replace(",", "."))
         except ValueError as e:
-            self.logger.error(f"Failed to convert amount '{amount_str}' in file {self.source}: {e}")
+            self.log.error(f"Failed to convert amount '{amount_str}' in file {self.source}: {e}")
 
     def extract_transactions(self):
         # Open the CSV file with UTF-8 encoding and a semicolon delimiter.
@@ -31,7 +31,7 @@ class DKBCSVExtractor(CSVExtractor):
             None
         )
         if header_row_index is None:
-            self.logger.error(f"No valid header row found in {self.source}.")
+            self.log.error(f"No valid header row found in {self.source}.")
             return []
 
         headers = [h.strip().replace('"', '') for h in rows[header_row_index]]
@@ -42,11 +42,11 @@ class DKBCSVExtractor(CSVExtractor):
             if not any(field.strip() for field in row):
                 continue
             data = dict(zip(headers, row))
-            transaction = Transaction(self.logger, self.source)
+            transaction = Transaction(self.log, self.source)
             transaction.setValue(self.parse_amount(data.get("Betrag (€)", "0")))
             # Set the owner account using the extracted Giro IBAN.
             transaction.owner = OwnerAccount(
-                self.logger, 
+                self.log, 
                 id=rows[0][1].strip().replace('"', ''), 
                 institute="DKB")
             if transaction.value > 0:

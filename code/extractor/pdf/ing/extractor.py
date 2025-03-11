@@ -1,23 +1,24 @@
 import re
 import pdfplumber
 import yaml
-from code.logger import Logger
+from code.model.log import Log
 from .booking_line_parser import BookingLineParser
 from .valuta_line_parser import ValutaLineParser
 from .additional_info_parser import AdditionalInfoParser
 from .transaction_builder import TransactionBuilder
 from .iban_parser import IBANParser
-from ..base import PDFExtractor
+from ..abstract import AbstractPDFExtractor
 from code.converter.pdf import PDFConverter
+from code.model.configuration import Configuration
 
-class IngPDFExtractor(PDFExtractor):
+class IngPDFExtractor(AbstractPDFExtractor):
     """
     Extraktor für ING Girokonto-Auszüge.
     Verantwortlich für das Aufteilen der PDF-Seiten in Zeilen und das Verwenden der
     kleineren Parser-Klassen sowie des TransactionBuilders zur Erstellung von Transaction-Objekten.
     """
-    def __init__(self, source: str, logger: Logger, config: yaml, pdf_converter:PDFConverter):
-        super().__init__(source, logger, config, pdf_converter)
+    def __init__(self, source: str, log: Log, configuration:Configuration, pdf_converter:PDFConverter):
+        super().__init__(source, log, configuration, pdf_converter)
         self.transactions = []
         self.booking_parser = BookingLineParser()
         self.valuta_parser = ValutaLineParser()
@@ -26,7 +27,7 @@ class IngPDFExtractor(PDFExtractor):
 
     def extract_transactions(self):
         if not self.pdf_converter.getLazyPages():
-            self.logger.warning(f"No pages found in {self.source}")
+            self.log.warning(f"No pages found in {self.source}")
             return []
         
         # Gesamten PDF-Text lesen, um die IBAN zu finden
@@ -38,10 +39,10 @@ class IngPDFExtractor(PDFExtractor):
         # IBAN extrahieren mithilfe des IBAN-Parsers
         account_iban = self.iban_parser.extract(full_text)
         if account_iban is None:
-            self.logger.warning(f"IBAN konnte nicht korrekt extrahiert werden aus {self.source}")
+            self.log.warning(f"IBAN konnte nicht korrekt extrahiert werden aus {self.source}")
             
         # Transaktionen seitenweise parsen
-        builder = TransactionBuilder(self.logger, self.source, account_iban)
+        builder = TransactionBuilder(self.log, self.source, account_iban)
         for page in self.pdf_converter.getLazyPages():
             lines = page.extract_text().splitlines()
             i = 0

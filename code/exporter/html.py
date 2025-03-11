@@ -1,25 +1,18 @@
-from .base import Exporter
-from ..logger import Logger
+from .abstract import AbstractExporter
+from code.model.log import Log
 from jinja2 import Environment, FileSystemLoader
 
-class HTMLExporter(Exporter):
-    def __init__(self, transactions, output_file, from_date=None, to_date=None, logger=Logger(), quiet=False):
-        super().__init__(transactions, output_file, logger, quiet=quiet)
-        self.from_date = from_date
-        self.to_date = to_date
-
-    def export(self):
-        if not self.transactions:
-            self.logger.warning("No transactions found to save.")
+class HtmlExporter(AbstractExporter):
+    def export(self)->None:
+        if not self.doTransactionsExist():
             return
-
         filter_info = ""
-        if self.from_date and self.to_date:
-            filter_info = f"Filtered: {self.from_date} to {self.to_date}"
-        elif self.from_date:
-            filter_info = f"Filtered: on or after {self.from_date}"
-        elif self.to_date:
-            filter_info = f"Filtered: on or before {self.to_date}"
+        if self and self.configuration.getToDate():
+            filter_info = f"Filtered: {self.configuration.getFromDate()} to {self.configuration.getToDate()}"
+        elif self.configuration.getFromDate():
+            filter_info = f"Filtered: on or after {self.configuration.getFromDate()}"
+        elif self.configuration.getToDate():
+            filter_info = f"Filtered: on or before {self.configuration.getToDate()}"
         
         icon_map = {
             "id": "bi bi-hash me-1",
@@ -37,10 +30,10 @@ class HTMLExporter(Exporter):
 
         env = Environment(loader=FileSystemLoader(searchpath="./templates"))
         template = env.get_template("transactions_template.html.j2")
-        rendered_html = template.render(filter_info=filter_info, transactions=self.transactions,icon_map=icon_map)
+        rendered_html = template.render(filter_info=filter_info, transactions=self.transactions_wrapper.getAll(),icon_map=icon_map)
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
                 f.write(rendered_html)
-            self.logger.success(f"HTML file created: {self.output_file}")
+            self.log.success(f"HTML file created: {self.output_file}")
         except Exception as e:
-            self.logger.error(f"Error exporting HTML: {e}")
+            self.log.error(f"Error exporting HTML: {e}")

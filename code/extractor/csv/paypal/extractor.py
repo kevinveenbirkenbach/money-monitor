@@ -2,8 +2,8 @@ import csv
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from code.model.transaction import Transaction
-from code.logger import Logger
-from ..base import CSVExtractor
+from code.model.log import Log
+from ..abstract import AbstractCSVExtractor
 from code.model.account import Account, OwnerAccount
 
 class PayPalCSVExtractor(CSVExtractor):
@@ -12,10 +12,10 @@ class PayPalCSVExtractor(CSVExtractor):
             reader = csv.DictReader(f, delimiter=',')
             headers = reader.fieldnames
             for row in reader:
-                transaction = Transaction(self.logger, self.source)
-                transaction.owner = OwnerAccount(self.logger)
-                transaction.owner.id = self.config.get("institutes").get("paypal").get("owner").get("id")
-                transaction.owner.name = self.config.get("institutes").get("paypal").get("owner").get("name")
+                transaction = Transaction(self.log, self.source)
+                transaction.owner = OwnerAccount(self.log)
+                transaction.owner.id = self.configuration.getInstitutes().get("paypal").get("owner").get("id")
+                transaction.owner.name = self.configuration.getInstitutes().get("paypal").get("owner").get("name")
                 transaction.owner.institute = "Paypal"
 
                 # -------------------------
@@ -49,7 +49,7 @@ class PayPalCSVExtractor(CSVExtractor):
                 try:
                     transaction.setValue(net_str)
                 except ValueError:
-                    self.logger.error(f"Error parsing net amount '{net_str}' in {self.source}")
+                    self.log.error(f"Error parsing net amount '{net_str}' in {self.source}")
                     transaction.setValue(0.0)
 
                 # Optional invoice number

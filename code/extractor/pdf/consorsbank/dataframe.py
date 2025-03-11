@@ -1,9 +1,9 @@
 import pdfplumber
 import pandas as pd
-from code.logger import Logger
+from code.model.log import Log
 
 class ConsorbankDataFrame:
-    def __init__(self, pdf_path:str, logger:Logger):
+    def __init__(self, pdf_path:str, log:Log):
         """
         Initializes the ConsorbankDataFrame class with the provided PDF path,
         minimum top threshold for filtering words, and margin for defining column ranges.
@@ -11,7 +11,7 @@ class ConsorbankDataFrame:
         :param pdf_path: Path to the PDF file to be processed.
         """
         self.pdf_path = pdf_path
-        self.logger = logger
+        self.log = log
         self.margin=40
         self.top_diference=4
         

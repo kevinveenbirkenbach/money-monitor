@@ -4,8 +4,8 @@ from code.model.invoice import Invoice
 from code.model.account import OwnerAccount, Account
 
 class BarclaysTransactionBuilder:
-    def __init__(self, logger, source, account_iban):
-        self.logger = logger
+    def __init__(self, log, source, account_iban):
+        self.log = log
         self.source = source
         self.account_iban = account_iban
         
@@ -13,10 +13,10 @@ class BarclaysTransactionBuilder:
         """
         Erstellt und konfiguriert ein Transaction-Objekt anhand der übergebenen Daten.
         """
-        transaction = Transaction(logger=self.logger, source=self.source)
+        transaction = Transaction(log=self.log, source=self.source)
         # Setze den Kontoinhaber (Owner) mit der extrahierten IBAN
         transaction.owner = OwnerAccount(
-            logger=self.logger,
+            log=self.log,
             id=self.account_iban,
             institute="Barclays"
         )
@@ -44,7 +44,7 @@ class BarclaysTransactionBuilder:
         try:
             transaction.setValue(amount_str)
         except ValueError as e:
-            self.logger.error(
+            self.log.error(
                 f"Error converting amount '{booking_data['amount_str']}' in source {self.source}: {e}"
             )
             return None

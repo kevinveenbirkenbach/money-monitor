@@ -1,6 +1,6 @@
 import hashlib
 import base64
-from ..logger import Logger
+from code.model.log import Log
 from datetime import datetime
 from code.model.account import Account, OwnerAccount
 from .invoice import Invoice
@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 class Transaction:
     """Represents a single transaction."""
     def __init__(self, 
-                 logger:Logger, 
+                 log:Log, 
                  source:str, 
                  partner:Account=None, 
                  owner:Account = None, 
@@ -19,14 +19,14 @@ class Transaction:
                  date: date = None,
                  related_transaction: str = None
                  ):
-        self.logger                 = logger
+        self.log                 = log
         self.description            = ""                                # Optional
         self.value                  = None                              # Needs to be defined type integer
-        self.owner                  = owner or OwnerAccount(self.logger)# Owner of this transaction
-        self.partner                = partner or Account(self.logger)   # Optional: The transaction partner
+        self.owner                  = owner or OwnerAccount(self.log)# Owner of this transaction
+        self.partner                = partner or Account(self.log)   # Optional: The transaction partner
         self.source                 = source                            # Obligatoric: File in which the transaction was found
         self.currency               = None                              # Obligatoric    
-        self.invoice                = invoice or Invoice(self.logger)   # Optional: The linked invoice
+        self.invoice                = invoice or Invoice(self.log)   # Optional: The linked invoice
         self.date                   = date                              # Obligatoric: The date when the transaction was done
         self.id                     = None                              # Obligatoric: The unique identifier of the transaction
         self.related_transaction_id = None                              # Optional: ID of the related transaction
@@ -40,7 +40,7 @@ class Transaction:
         Similar to setTransactionDate, but for Valuta (value date).
         """
         # Debugging statement to show the raw date_string
-        self.logger.debug(f"Attempting to parse valuta date: '{date_string}'")
+        self.log.debug(f"Attempting to parse valuta date: '{date_string}'")
 
         date_string = date_string.strip().replace('"', '')
         for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
@@ -50,11 +50,11 @@ class Transaction:
                 return
             except ValueError:
                 continue
-        self.logger.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
+        self.log.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
 
     def setTransactionDate(self, date_string:str)->None:
         # Debugging statement to show the raw date_string
-        self.logger.debug(f"Attempting to parse transaction date: '{date_string}'")
+        self.log.debug(f"Attempting to parse transaction date: '{date_string}'")
         
         date_string = date_string.strip().replace('"', '')
 
@@ -69,7 +69,7 @@ class Transaction:
                 continue
 
         # If parsing failed for all formats, log an error
-        self.logger.error(f"Invalid date format '{date_string}' in file {self.source}.")
+        self.log.error(f"Invalid date format '{date_string}' in file {self.source}.")
 
     def addTime(self, time_string: str, tz_string: str):
         """
@@ -105,10 +105,10 @@ class Transaction:
     
         except ValueError as e:
             # This error occurs if time_string does not match "%H:%M" or "%H:%M:%S"
-            self.logger.error(f"Invalid time format '{time_string}' in file {self.source}: {e}")
+            self.log.error(f"Invalid time format '{time_string}' in file {self.source}: {e}")
         except ZoneInfoNotFoundError:
             # This error occurs if tz_string is not a valid time zone (e.g., "Europe/Invalid")
-            self.logger.error(f"Invalid time zone '{tz_string}' in file {self.source}.")
+            self.log.error(f"Invalid time zone '{tz_string}' in file {self.source}.")
 
     def setTransactionId(self):
         if not self.id:
@@ -139,7 +139,7 @@ class Transaction:
     def isValid(self):
         # Dictionary with variable names as keys and expected types as values
         validations = {
-            "value":        float,          # value needs to be of type int
+            "value":        float,          # value needs to be of type float
             "owner":        OwnerAccount,   # Owner account
             "partner":      Account,        # The partner account
             "source":       str,            # source should be a string (file path)
@@ -153,16 +153,16 @@ class Transaction:
         for var_name, expected_type in validations.items():
             var_value = getattr(self, var_name, None)  # Get the value of the attribute dynamically
             if not isinstance(var_value, expected_type):
-                self.logger.error(f"{var_name} should be of type {expected_type.__name__}\n Type <<{type(var_value)}>> witch value {var_value} isn't correct.")
+                self.log.error(f"{var_name} should be of type {expected_type.__name__}\n Type <<{type(var_value)}>> witch value {var_value} isn't correct.")
                 return False
         if not self.owner.isValid():
-            self.logger.error("Owner isn't valid!")
+            self.log.error("Owner isn't valid!")
             return False
         if not self.partner.isValid():
-            self.logger.error("Partner isn't valid!")
+            self.log.error("Partner isn't valid!")
             return False 
         if not self.invoice.isValid():
-            self.logger.error("Invoice isn't valid!")
+            self.log.error("Invoice isn't valid!")
             return False
         return True
     

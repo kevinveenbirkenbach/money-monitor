@@ -2,15 +2,17 @@ import os
 import importlib
 from pdfminer.high_level import extract_text
 from code.converter.pdf import PDFConverter
+from code.model.configuration import Configuration
+from code.model.log import Log
 
 class ExtractorFactory:
     """
     Factory class that decides which extractor to use for a given file
     based on extension and textual patterns.
     """
-    def __init__(self, logger, config=None):
-        self.logger = logger
-        self.config = config or {}
+    def __init__(self, log:Log, configuration:Configuration):
+        self.log = log
+        self.configuration = configuration
         
         # Mappings for CSV-based extractors:
         # Each entry is: (condition_func, module_name, class_name)
@@ -68,12 +70,12 @@ class ExtractorFactory:
             for condition_func, name in self.csv_extractor_mappings:
                 if condition_func(content):
                     return self._instantiate_extractor(name, file_type, file_path)
-            self.logger.info(f"No matching CSV extractor found for '{file_path}'.")
+            self.log.info(f"No matching CSV extractor found for '{file_path}'.")
             return None
 
         # Handle PDF
         elif file_type == ".pdf":
-            pdf_converter = PDFConverter(self.logger, file_path);
+            pdf_converter = PDFConverter(self.log, file_path);
             
             first_page_text = pdf_converter.getFirstPage()
             if first_page_text:
@@ -85,12 +87,12 @@ class ExtractorFactory:
             for condition_func, name in self.pdf_extractor_mappings:
                 if condition_func(first_page_text, lower_first_page_text):      
                     return self._instantiate_extractor(name, file_type, file_path, pdf_converter)
-            self.logger.info(f"No matching PDF extractor found for '{file_path}'.")
+            self.log.info(f"No matching PDF extractor found for '{file_path}'.")
             return None
 
         # Unsupported extension
         else:
-            self.logger.info(f"Unsupported file extension '{ext}' for {file_path}.")
+            self.log.info(f"Unsupported file extension '{ext}' for {file_path}.")
             return None
 
     def _instantiate_extractor(self, name, file_type, file_path, pdf_converter=None):
@@ -103,10 +105,10 @@ class ExtractorFactory:
             # Assuming the extractor modules are in the same package directory:
             module = importlib.import_module(f"{module_name}")
             extractor_class = getattr(module, class_name)
-            # If your extractor needs a logger, pass it here as well
+            # If your extractor needs a log, pass it here as well
             if pdf_converter:
-                return extractor_class(file_path, logger=self.logger, config=self.config, pdf_converter=pdf_converter)
-            return extractor_class(file_path, logger=self.logger, config=self.config)
+                return extractor_class(file_path, log=self.log, configuration=self.configuration, pdf_converter=pdf_converter)
+            return extractor_class(file_path, log=self.log, configuration=self.configuration)
         except Exception as e:
-            self.logger.error(f"Failed to instantiate extractor {class_name} from {module_name}: {e}")
+            self.log.error(f"Failed to instantiate extractor {class_name} from {module_name}: {e}")
             return None

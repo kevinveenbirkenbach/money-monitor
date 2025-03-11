@@ -1,8 +1,8 @@
-from code.logger import Logger
+from code.model.log import Log
 
 class Account:
-    def __init__(self, logger:Logger, id=None, name=None, institute=None):
-        self.logger = logger        # Logger class
+    def __init__(self, log:Log, id=None, name=None, institute=None):
+        self.log = log        # Log class
         self.id = id                # ID of the account like IBAN
         self.name = name            # Owner of the Account like Max Mustermann
         self.institute = institute  # The institute the account belongs to  
@@ -11,7 +11,7 @@ class Account:
         if bool(self.id or self.name or self.institute):
             return True
         else:
-            self.logger.warning(f"Account with ID {self.id} isn't valid.")
+            self.log.warning(f"Account with ID {self.id} isn't valid.")
             return False
     
     def getDictionary(self)-> dict:
@@ -28,7 +28,7 @@ class Account:
             return self.name
         if self.institute:
             return self.institute
-        self.logger.warning(f"Account with ID {self.id} doesn't have a valid identity.")
+        self.log.warning(f"Account with ID {self.id} doesn't have a valid identity.")
         return ""
     
 class OwnerAccount(Account):
@@ -37,7 +37,7 @@ class OwnerAccount(Account):
         if bool((self.id or self.name) and self.institute):
             return True
         else: 
-            self.logger.warning("OwnerAccount isn't valid.")
+            self.log.warning("OwnerAccount isn't valid.")
             return False
                 
     

@@ -2,7 +2,7 @@ import pandas as pd
 import re
 from typing import List, Optional
 from code.model.transaction import Transaction
-from code.logger import Logger
+from code.model.log import Log
 from .text import TextExtractor
 from .date_parser import DateParser
 from .invoice import extract_and_remove_invoices
@@ -25,8 +25,8 @@ class ConsorsbankDataframeMapper:
     """
     TRIGGERS = ["*** Kontostand zum", "LASTSCHRIFT", "GEBUEHREN", "EURO-UEBERW.", "GUTSCHRIFT", "DAUERAUFTRAG"]
 
-    def __init__(self, logger: Logger, source: str, textextractor:TextExtractor):
-        self.logger = logger
+    def __init__(self, log: Log, source: str, textextractor:TextExtractor):
+        self.log = log
         self.source = source
         self.textextractor = textextractor
         self.year = textextractor.getYear()
@@ -46,7 +46,7 @@ class ConsorsbankDataframeMapper:
                 transactions.append(transaction)
             else:
                 # Optionally log if the block couldn't be mapped
-                self.logger.debug(f"Block {idx} could not be mapped: {[r.to_dict() for r in block]}")
+                self.log.debug(f"Block {idx} could not be mapped: {[r.to_dict() for r in block]}")
 
         return transactions
 
@@ -82,7 +82,7 @@ class ConsorsbankDataframeMapper:
         first_row = block[0]
         text_val = str(first_row.get("Text/Verwendungszweck", "")).strip()
         if "*** Kontostand zum" not in text_val and "Consorsbank" not in text_val:
-            transaction = Transaction(self.logger, self.source)
+            transaction = Transaction(self.log, self.source)
             transaction.posting_number = str(first_row.get("PNNr", "")).strip()
             transaction.setValutaDate(DateParser.convert_to_iso(first_row.get("Wert",""),self.year))
             transaction.setTransactionDate(DateParser.convert_to_iso(first_row.get("Datum", ""),self.year))
@@ -139,7 +139,7 @@ class ConsorsbankDataframeMapper:
                 year = "20" + year
             return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
         else:
-            self.logger.debug(f"Could not parse date from '{date_str}'")
+            self.log.debug(f"Could not parse date from '{date_str}'")
             return date_str
 
     def _parse_value(self, soll_str: str, haben_str: str) -> Optional[float]:
@@ -148,11 +148,11 @@ class ConsorsbankDataframeMapper:
             try:
                 return -float(val_str)
             except ValueError:
-                self.logger.debug(f"Could not parse soll value from '{soll_str}'")
+                self.log.debug(f"Could not parse soll value from '{soll_str}'")
         elif haben_str:
             val_str = haben_str.replace('.', '').replace(',', '.').replace('+', '')
             try:
                 return float(val_str)
             except ValueError:
-                self.logger.debug(f"Could not parse haben value from '{haben_str}'")
+                self.log.debug(f"Could not parse haben value from '{haben_str}'")
         return None

@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from ...model.transaction import Transaction
-from ...logger import Logger
+from .code.model.log import Log
 from .base import PDFExtractor
 
 # ATM using csv
@@ -17,7 +17,7 @@ class PayPalPDFExtractor(PDFExtractor):
                 break
 
         if header_index is None:
-            self.logger.error(f"No 'Transaktionscode' header found in {self.source}.")
+            self.log.error(f"No 'Transaktionscode' header found in {self.source}.")
             return []
 
         for line in lines[header_index + 1:]:
@@ -26,21 +26,21 @@ class PayPalPDFExtractor(PDFExtractor):
 
             parts = line.split()
             if len(parts) < 6:
-                self.logger.warning(f"Skipping line due to insufficient columns in {self.source}.")
+                self.log.warning(f"Skipping line due to insufficient columns in {self.source}.")
                 continue
 
             date_str = parts[0]
             try:
                 iso_date = datetime.strptime(date_str, "%d.%m.%Y").strftime("%Y-%m-%d")
             except Exception as e:
-                self.logger.error(f"Date conversion error in {self.source} for '{date_str}': {e}")
+                self.log.error(f"Date conversion error in {self.source} for '{date_str}': {e}")
                 iso_date = date_str
 
             description = " ".join(parts[1:4])
             try:
                 amount = float(parts[-1].replace(",", "."))
             except Exception as e:
-                self.logger.error(f"Amount conversion error in {self.source} for '{line}': {e}")
+                self.log.error(f"Amount conversion error in {self.source} for '{line}': {e}")
                 amount = 0.0
 
             sender = ""

@@ -1,17 +1,24 @@
-from code.logger import Logger
+from code.model.log import Log
+from code.model.transaction import Transaction
+from typing import List
+from code.helper.datetime import createComparatableTime
 
-class TransactionLog:
-    def __init__(self, logger: Logger, transactions: [Transaction] = None):
-        self.logger = logger 
+class TransactionsWrapper:
+    def __init__(self, log: Log, transactions: [Transaction] = []):
+        self.log = log 
         # Initialize the list of transactions.
         # If no transactions are provided, use an empty list.
-        self.transactions = transactions if transactions is not None else []
+        self.transactions = transactions
 
-    def addTransaction(self, transaction: Transaction):
+    def appendTransaction(self, transaction: Transaction)->None:
         # Add the given transaction to the list.
         self.transactions.append(transaction)
+        
+    def extendTransactions(self, transactions:[Transaction])->None:
+        # Add the given transactions to the list.
+        self.transactions.extend(transactions)
 
-    def getAll(self):
+    def getAll(self)-> List[Transaction]:
         # Return all transactions.
         return self.transactions
 
@@ -35,3 +42,10 @@ class TransactionLog:
             return self._sort_key(transaction, attribute)
         
         self.transactions.sort(key=sort_key)
+        
+    def sortByDate(self):
+        # Sorting the transactions by date, using the normalization method
+        self.transactions = sorted(
+            transactions, 
+            key=lambda t: createComparatableTime(t.date)
+        )        

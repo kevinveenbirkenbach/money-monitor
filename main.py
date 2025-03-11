@@ -1,8 +1,11 @@
 import argparse
-from code.processor import TransactionProcessor
-from code.logger import Logger
+from code.model.log import Log
 import yaml
 import sys
+from code.processor.load import LoadProcessor
+from code.processor.filter import FilterProcessor
+from code.model.configuration import Configuration
+from code.processor.validator import ValidatorProcessor
 
 def main():
     parser = argparse.ArgumentParser(
@@ -10,57 +13,73 @@ def main():
     )
     parser.add_argument("input_paths", type=str, nargs="+", help="Paths to the input PDF file(s) or directory(ies).")
     parser.add_argument("output_base", type=str, help="Base path to save the output file(s).")
-    parser.add_argument("--console", action="store_true", help="Print all transactions to the console.")
     parser.add_argument("-r", "--recursive", action="store_true", help="Recursively search for PDF files.")
     parser.add_argument("--from", dest="from_date", type=str, help="Only include transactions on or after this date.")
     parser.add_argument("--to", dest="to_date", type=str, help="Only include transactions on or before this date.")
-    parser.add_argument("--create-dirs", action="store_true", help="Create parent directories for output base.")
-    parser.add_argument("--export-types", nargs="+", choices=["csv", "html", "json", "yaml"],
+    parser.add_argument("--create-dirs", action="store_true", default=False, help="Create parent directories for output base.")
+    parser.add_argument("--export-types", nargs="+", choices=["csv", "html", "json", "yaml","console"],
                         help="Export formats (choose one or more: csv, html, json, yaml)")
-    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress all output (except CMD if --print-cmd).")
-    parser.add_argument("-d", "--debug", action="store_true", help="Enable detailed debug output.")
+    parser.add_argument("-q", "--quiet", action="store_true",default=False, help="Suppress all output (except CMD if --print-cmd).")
+    parser.add_argument("-d", "--debug", action="store_true",default=False, help="Enable detailed debug output.")
     parser.add_argument("--print-cmd", action="store_true", help="Print constructed CMD commands before execution.")
-    parser.add_argument("--config", type=str, help="Path to a YAML config file with default values.")
-    parser.add_argument("--validate", action="store_true", help="Enable validation based on config.")
+    parser.add_argument("-c", "--configuration-file", type=str, help="Path to a YAML config file with default values.")
+    parser.add_argument("--validate", action="store_true", help="Enable validation based on configuration.")
     
     args = parser.parse_args()
-
-    # Initialize logger
-    logger = Logger(debug=args.debug, quiet=args.quiet)
-    logger.info("Starting main process...")
-
-    # Load YAML config if provided
-    config_data = {}
-    if args.config:
-        try:
-            with open(args.config, "r", encoding="utf-8") as f:
-                config_data = yaml.safe_load(f)
-        except Exception as e:
-            logger.error(f"Failed to load config file '{args.config}': {e}")
-            sys.exit(1)
-
-    # Pass config_data to the TransactionProcessor
-    processor = TransactionProcessor(
+    
+    # Initialize Configuration
+    configuration = Configuration(
+        configuration_file=args.configuration_file,
         input_paths=args.input_paths,
         output_base=args.output_base,
-        print_transactions=args.console,
-        recursive=args.recursive,
-        export_types=args.export_types or [],
-        from_date=args.from_date,
-        to_date=args.to_date,
+        export_types=args.export_types,
         create_dirs=args.create_dirs,
         quiet=args.quiet,
-        logger=logger,
+        debug=args.debug,
+        validate=args.validate,
         print_cmd=args.print_cmd,
-        config=config_data,
-        validate=args.validate, 
-    )
-    processor.process()
+        recursive=args.recursive
+        )
+    if args.from_date:
+        configuration.setFromDate(args.from_date)
+    if args.to_date:
+        configuration.setToDate(args.to_date)
+
+    # Initialize log
+    log = Log(configuration)
+    log.info("Starting main process...")
     
-    if logger.error_count > 0:
-        logger.warning(f"This program produced {logger.error_count} errors.")
-        logger.error("Program failed.")
-        sys.exit(logger.error_count)
+    # Load
+    loaded_transactions_wrapper = LoadProcessor(
+        log=log,
+        configuration=configuration
+        ).process()
+    
+    # Filter
+    filtered_transactions_wrapper=FilterProcessor(
+        log=log,
+        configuration=configuration,
+        transactions_wrapper=loaded_transactions_wrapper
+        ).process()
+        
+    # Validate
+    valid_transactions_wrapper=ValidatorProcessor(
+        log=log,
+        configuration=configuration,
+        transactions_wrapper=filtered_transactions_wrapper
+        ).process() # This doesn't just contain the valid transactions
+
+    # Export
+    exported_transactions_wrapper=ValidatorProcessor(
+        log=log,
+        configuration=configuration,
+        transactions_wrapper=valid_transactions_wrapper
+        ).process() 
+    
+    if log.error_count > 0:
+        log.warning(f"This program produced {log.error_count} errors.")
+        log.error("Program failed.")
+        sys.exit(log.error_count)
 
 if __name__ == "__main__":
     main()

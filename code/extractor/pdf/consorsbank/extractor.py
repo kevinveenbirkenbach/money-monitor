@@ -1,23 +1,24 @@
 import re
 from code.model.transaction import Transaction
-from ..base import PDFExtractor
+from ..abstract import AbstractPDFExtractor
 import yaml
-from code.logger import Logger
+from code.model.log import Log
 from code.converter.pdf import PDFConverter
 from .dataframe_mapper import ConsorsbankDataframeMapper
 from .dataframe import ConsorbankDataFrame
 from .text import TextExtractor
+from code.model.configuration import Configuration
 
-class ConsorsbankPDFExtractor(PDFExtractor):
+class ConsorsbankPDFExtractor(AbstractPDFExtractor):
     """Extrahiert Transaktionen aus einem Consorsbank-PDF."""
     
-    def __init__(self, source: str, logger: Logger, config: yaml, pdf_converter:PDFConverter):
-        super().__init__(source, logger, config, pdf_converter)
+    def __init__(self, source: str, log: Log, configuration:Configuration, pdf_converter:PDFConverter):
+        super().__init__(source, log, configuration, pdf_converter)
         self.previous_balance = None
         self.transactions = None
-        textextractor = TextExtractor(self.logger,self.pdf_converter.getLazyFullText())
-        dataframe = ConsorbankDataFrame(self.source,self.logger)
-        dataframe_mapper = ConsorsbankDataframeMapper(self.logger,self.source,textextractor)
+        textextractor = TextExtractor(self.log,self.pdf_converter.getLazyFullText())
+        dataframe = ConsorbankDataFrame(self.source,self.log)
+        dataframe_mapper = ConsorsbankDataframeMapper(self.log,self.source,textextractor)
         self.transactions = dataframe_mapper.map_transactions(dataframe.extract_data())
     
     def extract_transactions(self):

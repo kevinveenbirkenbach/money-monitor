@@ -1,14 +1,14 @@
 import os
 from pdfminer.high_level import extract_text, extract_pages
 from pdfminer.layout import LTTextContainer, LTChar
-from code.logger import Logger
+from code.model.log import Log
 import pdfplumber
 import pandas
 
 class PDFConverter:
-    def __init__(self, logger: Logger, pdf_path: str):
+    def __init__(self, log: Log, pdf_path: str):
         self.pdf_path = pdf_path
-        self.logger = logger
+        self.log = log
         self.pdf = None
         self.full_text = None
         self.pages = None
@@ -60,11 +60,11 @@ class PDFConverter:
         """Extrahiert den Text aus dem gesamten PDF oder einer begrenzten Anzahl von Seiten."""
         try:
             text = extract_text(self.pdf_path)
-            if self.logger.debug_enabled:
-                self.logger.debug(f"File '{self.pdf_path}' converts to:\n{text}")
+            if self.log.debug_enabled:
+                self.log.debug(f"File '{self.pdf_path}' converts to:\n{text}")
             return text
         except Exception as e:
-            self.logger.warning(f"Could not extract text from '{self.pdf_path}'. Reason: {e}")
+            self.log.warning(f"Could not extract text from '{self.pdf_path}'. Reason: {e}")
             return None
 
     def getFirstPage(self):
@@ -106,11 +106,11 @@ class PDFConverter:
                 
                 structured_data.append(page_data)
 
-            if self.logger.debug_enabled:
-                self.logger.debug(f"Structured data for '{self.pdf_path}': {structured_data}")
+            if self.log.debug_enabled:
+                self.log.debug(f"Structured data for '{self.pdf_path}': {structured_data}")
 
             return structured_data
 
         except Exception as e:
-            self.logger.warning(f"Could not extract structured data from '{self.pdf_path}'. Reason: {e}")
+            self.log.warning(f"Could not extract structured data from '{self.pdf_path}'. Reason: {e}")
             return None

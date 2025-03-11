@@ -1,16 +1,15 @@
-from .base import Exporter
+from .abstract import AbstractExporter
 import json
 
-class JSONExporter(Exporter):
+class JsonExporter(AbstractExporter):
     """Exports transactions to a JSON file."""
-    def export(self):
-        if not self.transactions:
-            self.logger.warning("No transactions found to save.")
+    def export(self)->None:
+        if not self.doTransactionsExist():
             return
         data = self.get_data_as_dicts()
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-            self.logger.success(f"JSON file created: {self.output_file}")
+            self.log.success(f"JSON file created: {self.output_file}")
         except Exception as e:
-            self.logger.error(f"Error exporting JSON: {e}")
+            self.log.error(f"Error exporting JSON: {e}")

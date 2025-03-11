@@ -2,7 +2,8 @@
 import os
 import subprocess
 import argparse
-from code.logger import Logger
+from code.model.log import Log
+from code.model.configuration import Configuration
 
 def prepare_cmd(base_dir, bank, input_path, output_file, from_date, to_date, quiet, debug, print_cmd, config, validate:bool):
     cmd = ["python", "main.py", "-r"]
@@ -34,15 +35,15 @@ def prepare_cmd(base_dir, bank, input_path, output_file, from_date, to_date, qui
 
     return cmd
 
-def process_banks(base_dir, banks, from_date, to_date, quiet, debug, print_cmd, logger, config,validate:bool):
+def process_banks(base_dir, banks, from_date, to_date, quiet, debug, print_cmd, log, config,validate:bool):
     for bank in banks:
         input_path = os.path.join(base_dir, bank, "Bank Statements")
         output_file = os.path.join(base_dir, bank, "Transactions/transactions")
-        logger.info(f"Processing {bank} from {input_path} ...")
+        log.info(f"Processing {bank} from {input_path} ...")
 
         cmd = prepare_cmd(base_dir, bank, input_path, output_file, from_date, to_date, quiet, debug, print_cmd, config, validate)
         if print_cmd:
-            logger.info(cmd)
+            log.info(cmd)
         else:
             subprocess.run(cmd)
 
@@ -58,11 +59,29 @@ def main():
     parser.add_argument("--print-cmd", action="store_true", help="Print the CMD commands instead of executing them.")
     parser.add_argument("-q", "--quiet", action="store_true", help="Suppress all output (except CMD if --print-cmd).")
     parser.add_argument("-d", "--debug", action="store_true", help="Enable detailed debug output.")
-    parser.add_argument("--config", type=str, help="Path to a YAML config file with default values.")
-    parser.add_argument("--validate", action="store_true", help="Enable validation based on config.")
+    parser.add_argument("-c", "--configuration-file", type=str, help="Path to a YAML config file with default values.")
+    parser.add_argument("--validate", action="store_true", help="Enable validation based on configuration.")
     args = parser.parse_args()
+    
+    # Initialize Configuration
+    configuration = Configuration(
+        configuration_file=args.configuration_file,
+        input_paths="",
+        output_base="",
+        export_types="",
+        create_dirs="",
+        quiet=args.quiet,
+        debug=args.debug,
+        validate=args.validate,
+        print_cmd=args.print_cmd, 
+        recursive=None
+        )
+    if args.from_date:
+        configuration.setFromDate(args.from_date)
+    if args.to_date:
+        configuration.setToDate(args.to_date)
 
-    logger = Logger(debug=args.debug, quiet=args.quiet)
+    log = Log(configuration)
 
     # Process each bank separately
     process_banks(
@@ -73,8 +92,8 @@ def main():
         args.quiet,
         args.debug,
         args.print_cmd,
-        logger,
-        args.config,
+        log,
+        args.configuration_file,
         args.validate
     )
 
@@ -83,10 +102,10 @@ def main():
     combined_output = os.path.join(args.base_dir, "transactions")
     cmd = prepare_cmd(args.base_dir, "all", combined_input_paths, combined_output, 
                       args.from_date, args.to_date, args.quiet, args.debug, 
-                      args.print_cmd, args.config, args.validate)
+                      args.print_cmd, args.configuration_file, args.validate)
 
     if args.print_cmd:
-        logger.info(cmd)
+        log.info(cmd)
     else:
         subprocess.run(cmd)
 

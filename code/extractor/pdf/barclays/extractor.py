@@ -1,23 +1,24 @@
 import re
 import pdfplumber
 import yaml
-from code.logger import Logger
+from code.model.log import Log
 from .booking_line_parser import BarclaysBookingLineParser
 from .additional_info_parser import BarclaysAdditionalInfoParser
 from .iban_parser import BarclaysIBANParser
 from .transaction_builder import BarclaysTransactionBuilder
-from ..base import PDFExtractor
+from ..abstract import AbstractPDFExtractor
 from code.converter.pdf import PDFConverter
-from code.logger import Logger
+from code.model.log import Log
+from code.model.configuration import Configuration
 
-class BarclaysPDFExtractor(PDFExtractor):
+class BarclaysPDFExtractor(AbstractPDFExtractor):
     """
     Extractor for Barclays account statements.
     Splits the PDF pages into lines and uses helper parsers and the transaction builder
     to create Transaction objects. Attempts to match as many fields as possible.
     """
-    def __init__(self, source: str, logger: Logger, config: yaml, pdf_converter:PDFConverter):
-        super().__init__(source, logger, config, pdf_converter)
+    def __init__(self, source: str, log: Log, configuration:Configuration, pdf_converter:PDFConverter):
+        super().__init__(source, log, configuration, pdf_converter)
         self.transactions = []
         self.booking_parser = BarclaysBookingLineParser()
         self.additional_parser = BarclaysAdditionalInfoParser()
@@ -26,17 +27,17 @@ class BarclaysPDFExtractor(PDFExtractor):
     def extract_transactions(self):
         pages = self.pdf_converter.getLazyPages()
         if not pages:
-            self.logger.warning(f"No pages found in {self.source}")
+            self.log.warning(f"No pages found in {self.source}")
             return []
         
         # Gesamten PDF-Text lesen, um die IBAN zu extrahieren
         full_text = self.pdf_converter.getLazyFullText()
         account_iban = self.iban_parser.extract(full_text)
         if account_iban is None:
-            self.logger.warning(f"IBAN could not be extracted correctly from {self.source}")
+            self.log.warning(f"IBAN could not be extracted correctly from {self.source}")
         
         # Erstelle den TransactionBuilder mit den Barclays-spezifischen Daten
-        builder = BarclaysTransactionBuilder(self.logger, self.source, account_iban)
+        builder = BarclaysTransactionBuilder(self.log, self.source, account_iban)
         
         # Iteriere seitenweise über die Zeilen
         for page in pages:
