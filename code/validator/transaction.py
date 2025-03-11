@@ -77,13 +77,12 @@ class TransactionValidator:
     def __init__(self, configuration:Configuration, log: Log):
         self.configuration = configuration
         self.log = log
-        self.comparable_from_date = createComparatableTime(datetime.strptime(self.configuration.getFromDatetime(), "%Y-%m-%d")) if self.configuration.getFromDatetime() else None
-        self.comparable_to_date = createComparatableTime(datetime.strptime(self.configuration.getToDatetime(), "%Y-%m-%d")) if self.configuration.getToDatetime() else None
-
+        self.comparable_from_date = self.configuration.getFromDatetime() if self.configuration.getFromDatetime() else None
+        self.comparable_to_date = self.configuration.getToDatetime() if self.configuration.getToDatetime() else None
     def validate(self, transactions):
         """Validates transactions based on the provided config data."""
         if 'institutes' in self.configuration.configuration_file_data:
-            for institute, data in self.configuration.getInstitutes().items():
+            for institute, data in self.configuration.configuration_file_data.get("institutes").items():
                 if 'validate' in data:
                     self.log.debug(f"Validating institute: {institute}")
                     validate_list = sorted(data['validate'], key=lambda x: x['date'])
