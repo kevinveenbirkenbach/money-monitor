@@ -6,7 +6,15 @@ from code.model.log import Log
 from ..abstract import AbstractCSVExtractor
 from code.model.account import Account, OwnerAccount
 
-class PayPalCSVExtractor(CSVExtractor):
+class PayPalCSVExtractor(AbstractCSVExtractor):
+    def getConfigurationElement(self,identifiers:[str]):
+        filtered = self.configuration.configuration_file_data
+        for element in identifiers:
+            self.log.debug(f"Getting element '{element}'.")
+            filtered = filtered.get(element)
+            self.log.debug(f"Filtered '{element}'.")
+        return filtered
+    
     def extract_transactions(self):
         with open(self.source, newline='', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f, delimiter=',')
@@ -14,8 +22,8 @@ class PayPalCSVExtractor(CSVExtractor):
             for row in reader:
                 transaction = Transaction(self.log, self.source)
                 transaction.owner = OwnerAccount(self.log)
-                transaction.owner.id = self.configuration.getInstitutes().get("paypal").get("owner").get("id")
-                transaction.owner.name = self.configuration.getInstitutes().get("paypal").get("owner").get("name")
+                transaction.owner.id = self.getConfigurationElement(["institutes","paypal","owner","id"])
+                transaction.owner.name = self.getConfigurationElement(["institutes","paypal","owner","name"])
                 transaction.owner.institute = "Paypal"
 
                 # -------------------------

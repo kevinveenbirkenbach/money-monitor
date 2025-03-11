@@ -4,7 +4,7 @@ from code.model.log import Log
 from ..abstract import AbstractCSVExtractor
 from code.model.account import Account, OwnerAccount
 
-class DKBCSVExtractor(CSVExtractor):
+class DKBCSVExtractor(AbstractCSVExtractor):
     def parse_amount(self, amount_str):
         # Clean up the amount string: remove whitespace, quotes, and non-breaking spaces.
         amount_str = amount_str.strip().replace('"', '').replace("\u00A0", "").replace(" ", "")

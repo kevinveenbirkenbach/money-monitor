@@ -17,5 +17,5 @@ class Invoice:
     def isValid(self):
         return True
     
-    def getDictionary(self):
+    def getDictionary(self)->dict:
         return self.__dict__.copy()

@@ -61,13 +61,13 @@ def main():
         configuration=configuration,
         transactions_wrapper=loaded_transactions_wrapper
         ).process()
-        
+    
     # Validate
     valid_transactions_wrapper=ValidatorProcessor(
         log=log,
         configuration=configuration,
         transactions_wrapper=filtered_transactions_wrapper
-        ).process() # This doesn't just contain the valid transactions
+        ).process()
 
     # Export
     exported_transactions_wrapper=ValidatorProcessor(

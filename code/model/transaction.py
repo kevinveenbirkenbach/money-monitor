@@ -4,7 +4,7 @@ from code.model.log import Log
 from datetime import datetime
 from code.model.account import Account, OwnerAccount
 from .invoice import Invoice
-from datetime import date, datetime
+from datetime import date, datetime,time 
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
@@ -34,27 +34,9 @@ class Transaction:
         self.type                   = None
         self.medium                 = None
         self.posting_number         = None
-        
-    def setValutaDate(self, date_string):
-        """
-        Similar to setTransactionDate, but for Valuta (value date).
-        """
-        # Debugging statement to show the raw date_string
-        self.log.debug(f"Attempting to parse valuta date: '{date_string}'")
-
-        date_string = date_string.strip().replace('"', '')
-        for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
-            try:
-                parsed_date = datetime.strptime(date_string, fmt).date()
-                self.valuta_date = parsed_date
-                return
-            except ValueError:
-                continue
-        self.log.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
-
-    def setTransactionDate(self, date_string:str)->None:
-        # Debugging statement to show the raw date_string
-        self.log.debug(f"Attempting to parse transaction date: '{date_string}'")
+    
+    def _getDate(self,date_string:str)->date:
+        self.log.debug(f"Attempting to parse date: '{date_string}'")
         
         date_string = date_string.strip().replace('"', '')
 
@@ -63,13 +45,28 @@ class Transaction:
             try:
                 # Parse the string into a datetime, then convert to a date object
                 parsed_date = datetime.strptime(date_string, fmt).date()
-                self.date = parsed_date
-                return
+                return parsed_date
             except ValueError:
                 continue
+        self.log.error(f"Invalid valuta date format '{date_string}' in file {self.source}.")
+        
+    
+    def setValutaDate(self, date_string)->None:
+        self.valuta_date = self._getDate(date_string)
+    
+    def getValutaDate(self)->date:
+        return self.valuta_date
 
-        # If parsing failed for all formats, log an error
-        self.log.error(f"Invalid date format '{date_string}' in file {self.source}.")
+    def setTransactionDate(self, date_string:str)->None:
+        self.date = self._getDate(date_string)
+        
+    def getTransactionDate(self)->date:
+        return self.date
+
+    def getTransactionDatetime(self)->datetime:
+        if isinstance(self.date, datetime):
+            return self.date.replace(tzinfo=None)
+        return datetime.combine(self.date, time(12, 00, 00)).replace(tzinfo=None)
 
     def addTime(self, time_string: str, tz_string: str):
         """
@@ -144,7 +141,7 @@ class Transaction:
             "partner":      Account,        # The partner account
             "source":       str,            # source should be a string (file path)
             "currency":     str,            # currency should be a string (e.g., 'EUR', 'USD')
-            "date":         date,           # date can be either a string (date)
+            "date":         date,          
             "id":           str,            # id can be either a string
             "description":  str,            # description should be a string (optional)
             "invoice":      Invoice,        

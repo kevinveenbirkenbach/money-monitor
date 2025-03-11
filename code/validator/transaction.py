@@ -77,8 +77,8 @@ class TransactionValidator:
     def __init__(self, configuration:Configuration, log: Log):
         self.configuration = configuration
         self.log = log
-        self.comparable_from_date = createComparatableTime(datetime.strptime(self.configuration.getFromDate(), "%Y-%m-%d")) if self.configuration.getFromDate() else None
-        self.comparable_to_date = createComparatableTime(datetime.strptime(self.configuration.getToDate(), "%Y-%m-%d")) if self.configuration.getToDate() else None
+        self.comparable_from_date = createComparatableTime(datetime.strptime(self.configuration.getFromDatetime(), "%Y-%m-%d")) if self.configuration.getFromDatetime() else None
+        self.comparable_to_date = createComparatableTime(datetime.strptime(self.configuration.getToDatetime(), "%Y-%m-%d")) if self.configuration.getToDatetime() else None
 
     def validate(self, transactions):
         """Validates transactions based on the provided config data."""

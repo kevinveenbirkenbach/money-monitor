@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 import yaml
 
 class Configuration:
@@ -23,26 +23,27 @@ class Configuration:
         self.input_paths = input_paths
         self.output_base = output_base
         self.export_types = export_types
-        self.from_date  = from_date
-        self.to_date = to_date
+        self._from_date  = from_date
+        self._to_date = to_date
         self.create_dirs = create_dirs
         self.quiet=quiet
         self.debug=debug
         self.validate=validate
         self.print_cmd=print_cmd
         self.recursive=recursive
+        self._loadConfigurationFile()
         
     
     def setFromDate(self,from_date:str)->None:
-        self.from_date = self._getDatetimeByString(from_date)
+        self._from_date = self._getDatetimeByString(from_date)
         
     def setToDate(self,to_date:str)->None:
-        self.to_date = self._getDatetimeByString(to_date)
+        self._to_date = self._getDatetimeByString(to_date)
     
     def _getDatetimeByString(self,date_string:str)->datetime:
         return datetime.strptime(date_string, "%Y-%m-%d").date()
  
-    def loadConfigurationFile(self)->None:   
+    def _loadConfigurationFile(self)->None:   
         # Load YAML config
         try:
             with open(self.configuration_file, "r", encoding="utf-8") as f:
@@ -50,9 +51,6 @@ class Configuration:
         except Exception as e:
             log.error(f"Failed to load config file '{self.configuration_file}': {e}")
             sys.exit(1)
-    
-    def getInstitutes(self)->{}:
-        return self.configuration_file_data.get("institutes")
     
     def getInputPaths(self)->[str]:
         return self.input_paths
@@ -78,11 +76,11 @@ class Configuration:
     def shouldPrintCmd(self)->bool:
         return self.print_cmd
     
-    def getFromDate(self)->date:
-        return self.from_date
+    def getFromDatetime(self)->datetime:
+        return datetime.combine(self._from_date, time(0, 0, 0)).replace(tzinfo=None)
 
-    def getToDate(self)->date:
-        return self.to_date
+    def getToDatetime(self)->datetime:
+        return datetime.combine(self._to_date, time(23, 59, 59)).replace(tzinfo=None)
     
     def shouldRecursiveScan(self)->bool:
         return self.recursive

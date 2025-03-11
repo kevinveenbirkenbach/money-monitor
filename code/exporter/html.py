@@ -7,12 +7,12 @@ class HtmlExporter(AbstractExporter):
         if not self.doTransactionsExist():
             return
         filter_info = ""
-        if self and self.configuration.getToDate():
-            filter_info = f"Filtered: {self.configuration.getFromDate()} to {self.configuration.getToDate()}"
-        elif self.configuration.getFromDate():
-            filter_info = f"Filtered: on or after {self.configuration.getFromDate()}"
-        elif self.configuration.getToDate():
-            filter_info = f"Filtered: on or before {self.configuration.getToDate()}"
+        if self and self.configuration.getToDatetime():
+            filter_info = f"Filtered: {self.configuration.getFromDatetime()} to {self.configuration.getToDatetime()}"
+        elif self.configuration.getFromDatetime():
+            filter_info = f"Filtered: on or after {self.configuration.getFromDatetime()}"
+        elif self.configuration.getToDatetime():
+            filter_info = f"Filtered: on or before {self.configuration.getToDatetime()}"
         
         icon_map = {
             "id": "bi bi-hash me-1",
