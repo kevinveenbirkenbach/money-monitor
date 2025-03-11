@@ -12,18 +12,19 @@ class ConsorsbankDataframeMapper:
     Maps rows from a Consorsbank PDF DataFrame to a list of Transaction objects.
     
     A new transaction starts whenever the 'Text/Verwendungszweck' contains
-    one of these triggers:
-        - *** Kontostand zum
-        - LASTSCHRIFT
-        - GEBUEHREN
-        - EURO-UEBERW.
-        - GUTSCHRIFT
-        - DAUERAUFTRAG
+    one of these triggers.
     
     We first collect rows in 'blocks' until the next trigger is found.
     Then each block is mapped to a single Transaction object.
     """
-    TRIGGERS = ["*** Kontostand zum", "LASTSCHRIFT", "GEBUEHREN", "EURO-UEBERW.", "GUTSCHRIFT", "DAUERAUFTRAG"]
+    TRIGGERS = [
+        "*** Kontostand zum",
+        "LASTSCHRIFT",
+        "GEBUEHREN",
+        "EURO-UEBERW.",
+        "GUTSCHRIFT",
+        "DAUERAUFTRAG",
+        "ABSCHLUSS"]
 
     def __init__(self, log: Log, source: str, textextractor:TextExtractor):
         self.log = log
@@ -79,31 +80,97 @@ class ConsorsbankDataframeMapper:
         return blocks
 
     def _map_block_to_transaction(self, block: List[pd.Series]) -> Optional[Transaction]:
+        """
+        Converts a block (list of DataFrame rows) into a Transaction object.
+        Returns None if the rows do not form a valid transaction.
+        """
+        if not block:
+            return None
+
         first_row = block[0]
         text_val = str(first_row.get("Text/Verwendungszweck", "")).strip()
-        if "*** Kontostand zum" not in text_val and "Consorsbank" not in text_val:
+
+        # ---------------------------------------------------------
+        # 1) Special case: Treat "ABSCHLUSS" as its own transaction
+        # ---------------------------------------------------------
+        if "ABSCHLUSS" in text_val:
+            # Create a new transaction
             transaction = Transaction(self.log, self.source)
-            transaction.posting_number = str(first_row.get("PNNr", "")).strip()
-            transaction.setValutaDate(DateParser.convert_to_iso(first_row.get("Wert",""),self.year))
-            transaction.setTransactionDate(DateParser.convert_to_iso(first_row.get("Datum", ""),self.year))
-            transaction.currency = self.textextractor.getCurrency()
+            transaction.type = "ABSCHLUSS"
+
+            # Extract booking date + value date from columns "Datum" or "Wert"
+            transaction.setTransactionDate(
+                DateParser.convert_to_iso(first_row.get("Datum", ""), self.year)
+            )
+            transaction.setValutaDate(
+                DateParser.convert_to_iso(first_row.get("Wert", ""), self.year)
+            )
+
+            # Owner data (if needed)
             transaction.owner.name = self.textextractor.getAccountHolder()
             transaction.owner.id = self.textextractor.getIBAN()
             transaction.owner.institute = "Consorsbank"
-            transaction.type = text_val  # e.g. "LASTSCHRIFT", "GEBUEHREN", etc.
-            transaction.partner.name = str(block[1].get("Text/Verwendungszweck", "")).strip()
-            transaction.partner.institute = str(block[2].get("Text/Verwendungszweck", "")).strip()
-            transaction.description = self._get_description(block)
-            transaction.value = self._parse_value(
-                str(first_row.get("Soll", "")).strip(),
-                str(first_row.get("Haben", "")).strip()
-            ) or 0
-            invoices, cleaned_text = extract_and_remove_invoices(transaction.description)
-            if invoices:
-                transaction.description = cleaned_text
-                transaction.invoice.id = "\n".join(invoices)
+
+            # Parse amount from debit/credit
+            debit_str = str(first_row.get("Soll", "")).strip()
+            credit_str = str(first_row.get("Haben", "")).strip()
+            transaction.value = self._parse_value(debit_str, credit_str) or 0.0
+
+            # Optionally set a fixed description or extract from row
+            transaction.description = "Closing fee (ABSCHLUSS)"
+
+            # Generate a transaction ID
             transaction.setTransactionId()
+
             return transaction
+
+        # ---------------------------------------------------------
+        # 2) Ignore lines that are not actual transactions
+        # ---------------------------------------------------------
+        if "*** Kontostand zum" in text_val or "Consorsbank" in text_val:
+            return None
+
+        # ---------------------------------------------------------
+        # 3) Normal bookings (e.g., LASTSCHRIFT, EURO-UEBERW.)
+        # ---------------------------------------------------------
+        # Example: Adapt to your data structure as needed
+        # ---------------------------------------------------------
+
+        transaction = Transaction(self.log, self.source)
+        transaction.posting_number = str(first_row.get("PNNr", "")).strip()
+        transaction.setValutaDate(
+            DateParser.convert_to_iso(first_row.get("Wert", ""), self.year)
+        )
+        transaction.setTransactionDate(
+            DateParser.convert_to_iso(first_row.get("Datum", ""), self.year)
+        )
+        transaction.type = text_val  # e.g., "LASTSCHRIFT"
+        transaction.currency = self.textextractor.getCurrency()
+        transaction.owner.name = self.textextractor.getAccountHolder()
+        transaction.owner.id = self.textextractor.getIBAN()
+        transaction.owner.institute = "Consorsbank"
+
+        # For instance, partner data might be in block[1] + block[2] - watch out for indexing
+        if len(block) > 1:
+            transaction.partner.name = str(block[1].get("Text/Verwendungszweck", "")).strip()
+        if len(block) > 2:
+            transaction.partner.institute = str(block[2].get("Text/Verwendungszweck", "")).strip()
+
+        # Build the description
+        transaction.description = self._get_description(block)
+
+        # Parse the transaction amount
+        transaction.value = self._parse_value(
+            str(first_row.get("Soll", "")).strip(),
+            str(first_row.get("Haben", "")).strip()
+        ) or 0.0
+        
+        invoices, cleaned_text = extract_and_remove_invoices(transaction.description)
+        if invoices:
+            transaction.description = cleaned_text
+            transaction.invoice.id = "\n".join(invoices)
+        transaction.setTransactionId()
+        return transaction
     
     def _get_description(self,block):
         # Collect description lines from block[3] onward

@@ -12,12 +12,11 @@ class ConsorbankDataFrame:
         """
         self.pdf_path = pdf_path
         self.log = log
-        self.margin=40
         self.top_diference=6
         
         # Column definitions with margins applied
         self.columns = {
-            "Text/Verwendungszweck": (46.2 - self.margin, 153.204 + self.margin),
+            "Text/Verwendungszweck": (46.2 - 40, 153.204 + 40),
             "Datum": (233.1 - 100, 261.101 + 6),
             "PNNr": (272.75 - 6, 295.251 + 10),
             "Wert": (311.55 - 10, 331.547 + 50),
@@ -72,4 +71,5 @@ class ConsorbankDataFrame:
 
         # Convert the rows into a DataFrame
         df = pd.DataFrame(rows)
+        self.log.debug(f"Dataframe: {df.to_string()}")
         return df
