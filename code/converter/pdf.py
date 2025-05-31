@@ -4,6 +4,8 @@ from pdfminer.layout import LTTextContainer, LTChar
 from code.model.log import Log
 import pdfplumber
 import pandas
+import sys
+import traceback
 
 class PDFConverter:
     def __init__(self, log: Log, pdf_path: str):
@@ -60,16 +62,35 @@ class PDFConverter:
         """Extrahiert den Text aus dem gesamten PDF oder einer begrenzten Anzahl von Seiten."""
         try:
             text = extract_text(self.pdf_path)
-            if self.log.debug_enabled:
-                self.log.debug(f"File '{self.pdf_path}' converts to:\n{text}")
+            self.log.debug(f"File '{self.pdf_path}' converts to:\n{text}")
             return text
         except Exception as e:
             self.log.warning(f"Could not extract text from '{self.pdf_path}'. Reason: {e}")
             return None
 
     def getFirstPage(self):
-        """Extrahiert den Text der ersten Seite."""
-        return extract_text(self.pdf_path,maxpages=1)
+        """Extracts the text from the first page."""
+        self.log.debug(f"Attempting to extract the first page from: {self.pdf_path}")
+        try:
+            return extract_text(self.pdf_path, maxpages=1)
+        except ValueError as e:
+            if "Non-Ascii85 digit found:" in str(e):
+                error_msg = (
+                    f"❌ ERROR: Problematic PDF file due to Ascii85 decode issue!\n"
+                    f"File: {self.pdf_path}\n"
+                    f"Reason: {e}\n\n"
+                    f"Please repair this files with https://github.com/kevinveenbirkenbach/pdf-healer"
+                )
+                self.log.error(error_msg)
+                print(error_msg, file=sys.stderr)
+                sys.exit(1)
+            else:
+                # re-raise for other ValueErrors
+                raise
+        except Exception as e:
+            # Optional: handle other exceptions or re-raise
+            raise
+
 
     def getStructuredData(self, maxpages=0):
         """Extrahiert strukturierte Daten wie Text und Positionen der Textblöcke."""
@@ -106,8 +127,7 @@ class PDFConverter:
                 
                 structured_data.append(page_data)
 
-            if self.log.debug_enabled:
-                self.log.debug(f"Structured data for '{self.pdf_path}': {structured_data}")
+            self.log.debug(f"Structured data for '{self.pdf_path}': {structured_data}")
 
             return structured_data
 

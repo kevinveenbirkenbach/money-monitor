@@ -87,9 +87,10 @@ def main():
     log.debug(f"{len(valid_transactions_wrapper.getAll())} exported.")
     
     if log.error_count > 0:
-        log.warning(f"This program produced {log.error_count} errors.")
-        log.error("Program failed.")
+        log.error("Program failed. This program produced {log.error_count} errors.")
         sys.exit(log.error_count)
+    else:
+        log.info("✅ All transactions processed and exported successfully.")
 
 if __name__ == "__main__":
     main()

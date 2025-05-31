@@ -2,6 +2,7 @@
 import os
 import subprocess
 import argparse
+import sys
 from code.model.log import Log
 from code.model.configuration import Configuration
 
@@ -107,7 +108,12 @@ def main():
     if args.print_cmd:
         log.info(cmd)
     else:
-        subprocess.run(cmd)
+        try:
+            subprocess.run(cmd, check=True)
+            print("✅ Bulk run completed successfully!")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Bulk run failed! (Exit code: {e.returncode})", file=sys.stderr)
+            sys.exit(e.returncode)
 
 if __name__ == "__main__":
     main()

@@ -22,11 +22,11 @@ class Transaction:
         self.log                 = log
         self.description            = ""                                # Optional
         self.value                  = None                              # Needs to be defined type integer
-        self.owner                  = owner or OwnerAccount(self.log)# Owner of this transaction
-        self.partner                = partner or Account(self.log)   # Optional: The transaction partner
+        self.owner                  = owner or OwnerAccount(self.log)   # Owner of this transaction
+        self.partner                = partner or Account(self.log)      # Optional: The transaction partner
         self.source                 = source                            # Obligatoric: File in which the transaction was found
         self.currency               = None                              # Obligatoric    
-        self.invoice                = invoice or Invoice(self.log)   # Optional: The linked invoice
+        self.invoice                = invoice or Invoice(self.log)      # Optional: The linked invoice
         self.date                   = date                              # Obligatoric: The date when the transaction was done
         self.id                     = None                              # Obligatoric: The unique identifier of the transaction
         self.related_transaction_id = None                              # Optional: ID of the related transaction
