@@ -38,11 +38,12 @@ class TestQifMapper(unittest.TestCase):
             parse_date_to_qif("09-01-2023")
 
     def test_build_qif_from_csv_basic(self):
-        # Create a temporary CSV file with two rows (one income, one expense)
+        # Create a temporary CSV file with two rows (one income, one expense).
+        # Include 'receiver' and 'partner_name' columns so payee logic works.
         csv_content = (
-            "id,date,brutto value,currency,sender,description,category,netto value,Vat value\n"
-            "TID1,2023-01-09,6664,EUR,diconium digital,Invoice 0001,Betriebseinnahmen,5600,1064\n"
-            "TID2,2023-02-15,-200,EUR,Office Depot,Stationery,Bürobedarf,168,32\n"
+            "id,date,brutto value,currency,sender,receiver,partner_name,description,category,netto value,Vat value\n"
+            "TID1,2023-01-09,6664,EUR,diconium digital,diconium digital,,Invoice 0001,Betriebseinnahmen,5600,1064\n"
+            "TID2,2023-02-15,-200,EUR,Office Depot,Office Depot,,Stationery,Bürobedarf,168,32\n"
         )
         tmp_csv = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
         tmp_csv.write(csv_content.encode("utf-8"))
@@ -52,7 +53,7 @@ class TestQifMapper(unittest.TestCase):
         tmp_qif = tempfile.NamedTemporaryFile(delete=False, suffix=".qif")
         tmp_qif.close()
 
-        # Build QIF for all categorys (no filter)
+        # Build QIF for all categories (no filter)
         build_qif_from_csv(
             input_csv=tmp_csv.name,
             output_qif=tmp_qif.name,
@@ -110,11 +111,11 @@ class TestQifMapper(unittest.TestCase):
         os.unlink(tmp_qif.name)
 
     def test_build_qif_from_csv_with_category_filter(self):
-        # CSV with multiple categorys, only one matches filter
+        # CSV with multiple categories, only one matches filter
         csv_content = (
-            "id,date,brutto value,currency,sender,description,category,netto value,Vat value\n"
-            "A,2023-01-01,100,EUR,Payee A,Desc A,Kat1,84,16\n"
-            "B,2023-01-02,200,EUR,Payee B,Desc B,Kat2,168,32\n"
+            "id,date,brutto value,currency,sender,receiver,partner_name,description,category,netto value,Vat value\n"
+            "A,2023-01-01,100,EUR,Payee A,Payee A,,Desc A,Kat1,84,16\n"
+            "B,2023-01-02,200,EUR,Payee B,Payee B,,Desc B,Kat2,168,32\n"
         )
         tmp_csv = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
         tmp_csv.write(csv_content.encode("utf-8"))
@@ -149,7 +150,6 @@ class TestQifMapper(unittest.TestCase):
         # Cleanup
         os.unlink(tmp_csv.name)
         os.unlink(tmp_qif.name)
-
 
 if __name__ == "__main__":
     unittest.main()

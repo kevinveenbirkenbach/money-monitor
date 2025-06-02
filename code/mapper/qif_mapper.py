@@ -120,11 +120,22 @@ def build_qif_from_csv(
             print(f"[Warning] Skipping row due to parse error: {e}", file=sys.stderr)
             continue
 
-        payee = row.get("sender", "").strip() or row.get("partner_name", "").strip() or ""
-        memo = row.get("description", "").strip()
-
+        # Determine whether this is an expense (brutto < 0) or income (brutto > 0)
         is_expense = (bruto < 0)
         tx_amount_str = f"{bruto:.2f}"
+
+        payee = row.get("partner_name", "").strip()
+
+        if not payee:        
+            # Choose Payee field based on expense vs. income
+            if is_expense:
+                # For expenses, use the "receiver" column
+                payee = row.get("receiver", "").strip()
+            else:
+                # For income, use the "sender" column
+                payee = row.get("sender", "").strip()
+
+        memo = row.get("description", "").strip()
 
         # Write top-level transaction header
         lines.append(f"D{qif_date}")       # Date line
