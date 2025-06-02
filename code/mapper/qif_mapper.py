@@ -106,7 +106,7 @@ def build_qif_from_csv(
     for row in rows:
         # If a category filter is provided, skip rows that don't match exactly
         if filter_category is not None:
-            kat = row.get("Kategorie", "").strip()
+            kat = row.get("category", "").strip()
             if kat != filter_category:
                 continue
 
@@ -144,11 +144,11 @@ def build_qif_from_csv(
             split2_amt = f"{abs(vatAmt):.2f}"  # e.g. "23.95"
 
             # Write split lines:
-            lines.append(f"S{expense_account_name}")       # Category for net
+            lines.append(f"S{expense_account_name}")       # category for net
             lines.append(f"${split1_amt}")                 # Amount for net
             lines.append(f"%Net (expense)")                 # Memo for net
 
-            lines.append(f"S{vat_input_account_name}")     # Category for VAT
+            lines.append(f"S{vat_input_account_name}")     # category for VAT
             lines.append(f"${split2_amt}")                 # Amount for VAT
             lines.append(f"%VAT (input)")                   # Memo for VAT
 
@@ -160,11 +160,11 @@ def build_qif_from_csv(
             split2_amt = f"{-abs(vatAmt):.2f}"  # e.g. "-380.00"
 
             # Write split lines:
-            lines.append(f"S{income_account_name}")        # Category for net
+            lines.append(f"S{income_account_name}")        # category for net
             lines.append(f"${split1_amt}")                # Amount for net
             lines.append(f"%Net (income)")                 # Memo for net
 
-            lines.append(f"S{vat_output_account_name}")    # Category for VAT
+            lines.append(f"S{vat_output_account_name}")    # category for VAT
             lines.append(f"${split2_amt}")                # Amount for VAT
             lines.append(f"%VAT (output)")                 # Memo for VAT
 

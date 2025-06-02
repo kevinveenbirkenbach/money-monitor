@@ -1,5 +1,3 @@
-# File: tests/test_qif_mapper.py
-
 import os
 import tempfile
 import unittest
@@ -42,7 +40,7 @@ class TestQifMapper(unittest.TestCase):
     def test_build_qif_from_csv_basic(self):
         # Create a temporary CSV file with two rows (one income, one expense)
         csv_content = (
-            "id,date,brutto value,currency,sender,description,Kategorie,netto value,Vat value\n"
+            "id,date,brutto value,currency,sender,description,category,netto value,Vat value\n"
             "TID1,2023-01-09,6664,EUR,diconium digital,Invoice 0001,Betriebseinnahmen,5600,1064\n"
             "TID2,2023-02-15,-200,EUR,Office Depot,Stationery,Bürobedarf,168,32\n"
         )
@@ -54,7 +52,7 @@ class TestQifMapper(unittest.TestCase):
         tmp_qif = tempfile.NamedTemporaryFile(delete=False, suffix=".qif")
         tmp_qif.close()
 
-        # Build QIF for all categories (no filter)
+        # Build QIF for all categorys (no filter)
         build_qif_from_csv(
             input_csv=tmp_csv.name,
             output_qif=tmp_qif.name,
@@ -112,9 +110,9 @@ class TestQifMapper(unittest.TestCase):
         os.unlink(tmp_qif.name)
 
     def test_build_qif_from_csv_with_category_filter(self):
-        # CSV with multiple categories, only one matches filter
+        # CSV with multiple categorys, only one matches filter
         csv_content = (
-            "id,date,brutto value,currency,sender,description,Kategorie,netto value,Vat value\n"
+            "id,date,brutto value,currency,sender,description,category,netto value,Vat value\n"
             "A,2023-01-01,100,EUR,Payee A,Desc A,Kat1,84,16\n"
             "B,2023-01-02,200,EUR,Payee B,Desc B,Kat2,168,32\n"
         )
@@ -125,7 +123,7 @@ class TestQifMapper(unittest.TestCase):
         tmp_qif = tempfile.NamedTemporaryFile(delete=False, suffix=".qif")
         tmp_qif.close()
 
-        # Only include rows where Kategorie == "Kat1"
+        # Only include rows where category == "Kat1"
         build_qif_from_csv(
             input_csv=tmp_csv.name,
             output_qif=tmp_qif.name,
