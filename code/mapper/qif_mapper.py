@@ -1,4 +1,4 @@
-# File: code/mapper/qif_mapper.py
+# code/mapper/qif_mapper.py
 
 import csv
 import sys
@@ -51,15 +51,15 @@ def build_qif_from_csv(
     bank_account_name: str,
     income_account_name: str,
     expense_account_name: str,
-    vat_output_account_name: str,
-    vat_input_account_name: str,
+    vat_output_account_name: str = None,
+    vat_input_account_name: str = None,
     filter_category: str = None
 ):
     """
-    Read a flat CSV and write a QIF file with splits manually.
+    Read a flat CSV and write a QIF file with splits.
 
-    Optionally filter by the 'Kategorie' column: only process rows where
-    'Kategorie' equals filter_category.
+    Optionally filter by the 'category' column: only process rows where
+    'category' equals filter_category.
 
     Each CSV row must contain at least these columns:
       - id
@@ -68,19 +68,24 @@ def build_qif_from_csv(
       - netto value
       - Vat value
       - sender (or partner_name)
+      - receiver (for expenses)
       - description
-      - Kategorie
+      - category
 
     Splitting logic:
-      * If brutto > 0 (income):
-          - Top-level transaction amount = +brutto (bank deposit)
-          - Split1: income_account_name with amount = -netto  (credit to income)
-          - Split2: vat_output_account_name with amount = -vatAmt  (credit to VAT liability)
-      * If brutto < 0 (expense):
-          - Top-level transaction amount = -abs(brutto) (bank withdrawal)
-          - Split1: expense_account_name with amount = +abs(netto)  (debit to expense)
-          - Split2: vat_input_account_name with amount = +abs(vatAmt)  (debit to VAT asset)
-      The sum of split amounts must match the top-level transaction amount.
+      * If VAT accounts are provided:
+          - If brutto > 0 (income):
+              - Top-level transaction amount = +brutto (bank deposit)
+              - Split 1: income_account_name with amount = -netto (credit to income)
+              - Split 2: vat_output_account_name with amount = -vatAmt (credit to VAT liability)
+          - If brutto < 0 (expense):
+              - Top-level transaction amount = -abs(brutto) (bank withdrawal)
+              - Split 1: expense_account_name with amount = +abs(netto) (debit to expense)
+              - Split 2: vat_input_account_name with amount = +abs(vatAmt) (debit to VAT asset)
+      * If VAT accounts are NOT provided:
+          - If brutto > 0 (income): single split on income_account_name with amount = -brutto
+          - If brutto < 0 (expense): single split on expense_account_name with amount = +abs(brutto)
+      The sum of splits must match the top-level transaction amount.
     """
 
     # 1) Read CSV rows into a list of dictionaries
@@ -99,7 +104,7 @@ def build_qif_from_csv(
     lines.append("!Account")
     lines.append(f"N{bank_account_name}")
     lines.append("TBank")
-    lines.append("^")            # <-- terminate the account header section
+    lines.append("^")            # end of account header
     lines.append("")             # blank line before transactions
     lines.append("!Type:Bank")
 
@@ -125,14 +130,10 @@ def build_qif_from_csv(
         tx_amount_str = f"{bruto:.2f}"
 
         payee = row.get("partner_name", "").strip()
-
-        if not payee:        
-            # Choose Payee field based on expense vs. income
+        if not payee:
             if is_expense:
-                # For expenses, use the "receiver" column
                 payee = row.get("receiver", "").strip()
             else:
-                # For income, use the "sender" column
                 payee = row.get("sender", "").strip()
 
         memo = row.get("description", "").strip()
@@ -141,43 +142,51 @@ def build_qif_from_csv(
         lines.append(f"D{qif_date}")       # Date line
         lines.append(f"T{tx_amount_str}")  # Amount line
         if payee:
-            lines.append(f"P{payee}")      # Payee/Payor
+            lines.append(f"P{payee}")      # Payee/Payer
         if memo:
             lines.append(f"M{memo}")       # Memo
         if fitid:
             lines.append(f"N{fitid}")      # Check/Number (using transaction ID)
 
-        if is_expense:
-            # EXPENSE: bruto is negative
-            # Split1: Expense account (positive, increase)
-            split1_amt = f"{abs(netto):.2f}"   # e.g. "126.05"
-            # Split2: VAT Input account (positive, increase)
-            split2_amt = f"{abs(vatAmt):.2f}"  # e.g. "23.95"
+        # Determine splitting behavior based on presence of VAT accounts
+        if vat_output_account_name and vat_input_account_name:
+            # VAT accounts provided → create net + VAT splits
+            if is_expense:
+                # EXPENSE: bruto is negative
+                split1_amt = f"{abs(netto):.2f}"
+                split2_amt = f"{abs(vatAmt):.2f}"
 
-            # Write split lines:
-            lines.append(f"S{expense_account_name}")       # category for net
-            lines.append(f"${split1_amt}")                 # Amount for net
-            lines.append(f"%Net (expense)")                 # Memo for net
+                lines.append(f"S{expense_account_name}")
+                lines.append(f"${split1_amt}")
+                lines.append(f"%Net (expense)")
 
-            lines.append(f"S{vat_input_account_name}")     # category for VAT
-            lines.append(f"${split2_amt}")                 # Amount for VAT
-            lines.append(f"%VAT (input)")                   # Memo for VAT
+                lines.append(f"S{vat_input_account_name}")
+                lines.append(f"${split2_amt}")
+                lines.append(f"%VAT (input)")
+            else:
+                # INCOME: bruto is positive
+                split1_amt = f"{-abs(netto):.2f}"
+                split2_amt = f"{-abs(vatAmt):.2f}"
 
+                lines.append(f"S{income_account_name}")
+                lines.append(f"${split1_amt}")
+                lines.append(f"%Net (income)")
+
+                lines.append(f"S{vat_output_account_name}")
+                lines.append(f"${split2_amt}")
+                lines.append(f"%VAT (output)")
         else:
-            # INCOME: bruto is positive
-            # Split1: Income account (negative, credit)
-            split1_amt = f"{-abs(netto):.2f}"   # e.g. "-2000.00"
-            # Split2: VAT Output account (negative, credit)
-            split2_amt = f"{-abs(vatAmt):.2f}"  # e.g. "-380.00"
-
-            # Write split lines:
-            lines.append(f"S{income_account_name}")        # category for net
-            lines.append(f"${split1_amt}")                # Amount for net
-            lines.append(f"%Net (income)")                 # Memo for net
-
-            lines.append(f"S{vat_output_account_name}")    # category for VAT
-            lines.append(f"${split2_amt}")                # Amount for VAT
-            lines.append(f"%VAT (output)")                 # Memo for VAT
+            # VAT accounts not provided → single split for full amount on income/expense account
+            if is_expense:
+                split_amt = f"{abs(bruto):.2f}"
+                lines.append(f"S{expense_account_name}")
+                lines.append(f"${split_amt}")
+                lines.append(f"%Net (expense, no VAT)")
+            else:
+                split_amt = f"{-abs(bruto):.2f}"
+                lines.append(f"S{income_account_name}")
+                lines.append(f"${split_amt}")
+                lines.append(f"%Net (income, no VAT)")
 
         # Transaction terminator
         lines.append("^")

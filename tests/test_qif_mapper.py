@@ -1,10 +1,175 @@
+# Add the following to tests/test_qif_mapper.py
+
 import os
 import tempfile
 import unittest
 from decimal import Decimal
 from code.mapper.qif_mapper import parse_amount_german, parse_date_to_qif, build_qif_from_csv
 
-class TestQifMapper(unittest.TestCase):
+class TestQifMapperNoVat(unittest.TestCase):
+    def test_income_without_vat_accounts(self):
+        # Create a temporary CSV file with one income row
+        csv_content = (
+            "id,date,brutto value,currency,sender,receiver,partner_name,description,category,netto value,Vat value\n"
+            "INC1,2023-03-10,1500,EUR,Client A,Client A,,Service Fee,Sales,1260,240\n"
+        )
+        tmp_csv = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+        tmp_csv.write(csv_content.encode("utf-8"))
+        tmp_csv.close()
+
+        # Prepare output QIF path
+        tmp_qif = tempfile.NamedTemporaryFile(delete=False, suffix=".qif")
+        tmp_qif.close()
+
+        # Build QIF without providing VAT accounts
+        build_qif_from_csv(
+            input_csv=tmp_csv.name,
+            output_qif=tmp_qif.name,
+            bank_account_name="Assets:Bank:Main",
+            income_account_name="Income:Services",
+            expense_account_name="Expenses:Misc",  # not used in this test
+            vat_output_account_name=None,
+            vat_input_account_name=None,
+            filter_category=None
+        )
+
+        # Read QIF and verify contents
+        with open(tmp_qif.name, "r", encoding="utf-8") as f:
+            qif_lines = [line.rstrip("\n") for line in f if line.strip()]
+
+        # Header lines
+        self.assertIn("!Account", qif_lines)
+        self.assertIn("!Type:Bank", qif_lines)
+
+        # Find the income transaction
+        idx_income = qif_lines.index("D03/10/2023")
+        # Top-level amount should be +1500.00
+        self.assertEqual(qif_lines[idx_income + 1], "T1500.00")
+        # Payee and memo
+        self.assertEqual(qif_lines[idx_income + 2], "PClient A")
+        self.assertEqual(qif_lines[idx_income + 3], "MService Fee")
+        self.assertEqual(qif_lines[idx_income + 4], "NINC1")
+        # Only one split on Income:Services with amount = -1500.00
+        self.assertEqual(qif_lines[idx_income + 5], "SIncome:Services")
+        self.assertEqual(qif_lines[idx_income + 6], "$-1500.00")
+        self.assertEqual(qif_lines[idx_income + 7], "%Net (income, no VAT)")
+        # Transaction terminator
+        self.assertEqual(qif_lines[idx_income + 8], "^")
+
+        # Clean up
+        os.unlink(tmp_csv.name)
+        os.unlink(tmp_qif.name)
+
+    def test_expense_without_vat_accounts(self):
+        # Create a temporary CSV file with one expense row
+        csv_content = (
+            "id,date,brutto value,currency,sender,receiver,partner_name,description,category,netto value,Vat value\n"
+            "EXP1,2023-04-05,-250,EUR,Supplier B,Supplier B,,Office Supplies,Office,210,40\n"
+        )
+        tmp_csv = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+        tmp_csv.write(csv_content.encode("utf-8"))
+        tmp_csv.close()
+
+        # Prepare output QIF path
+        tmp_qif = tempfile.NamedTemporaryFile(delete=False, suffix=".qif")
+        tmp_qif.close()
+
+        # Build QIF without providing VAT accounts
+        build_qif_from_csv(
+            input_csv=tmp_csv.name,
+            output_qif=tmp_qif.name,
+            bank_account_name="Assets:Bank:Main",
+            income_account_name="Income:Services",  # not used in this test
+            expense_account_name="Expenses:Office Supplies",
+            vat_output_account_name=None,
+            vat_input_account_name=None,
+            filter_category=None
+        )
+
+        # Read QIF and verify contents
+        with open(tmp_qif.name, "r", encoding="utf-8") as f:
+            qif_lines = [line.rstrip("\n") for line in f if line.strip()]
+
+        # Header lines
+        self.assertIn("!Account", qif_lines)
+        self.assertIn("!Type:Bank", qif_lines)
+
+        # Find the expense transaction
+        idx_expense = qif_lines.index("D04/05/2023")
+        # Top-level amount should be -250.00
+        self.assertEqual(qif_lines[idx_expense + 1], "T-250.00")
+        # Payee and memo
+        self.assertEqual(qif_lines[idx_expense + 2], "PSupplier B")
+        self.assertEqual(qif_lines[idx_expense + 3], "MOffice Supplies")
+        self.assertEqual(qif_lines[idx_expense + 4], "NEXP1")
+        # Only one split on Expenses:Office Supplies with amount = 250.00
+        self.assertEqual(qif_lines[idx_expense + 5], "SExpenses:Office Supplies")
+        self.assertEqual(qif_lines[idx_expense + 6], "$250.00")
+        self.assertEqual(qif_lines[idx_expense + 7], "%Net (expense, no VAT)")
+        # Transaction terminator
+        self.assertEqual(qif_lines[idx_expense + 8], "^")
+
+        # Clean up
+        os.unlink(tmp_csv.name)
+        os.unlink(tmp_qif.name)
+
+    def test_mixed_rows_with_and_without_vat_accounts(self):
+        # Create a CSV with one income and one expense
+        csv_content = (
+            "id,date,brutto value,currency,sender,receiver,partner_name,description,category,netto value,Vat value\n"
+            "MIX1,2023-05-01,1000,EUR,Client X,Client X,,Consulting,Consulting,840,160\n"
+            "MIX2,2023-05-02,-500,EUR,Supplier Y,Supplier Y,,Equipment,Equipment,420,80\n"
+        )
+        tmp_csv = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+        tmp_csv.write(csv_content.encode("utf-8"))
+        tmp_csv.close()
+
+        tmp_qif = tempfile.NamedTemporaryFile(delete=False, suffix=".qif")
+        tmp_qif.close()
+
+        # Build QIF giving only VAT output (invalid scenario: both or none)
+        # Expect that because both VAT accounts are not set together, VAT is ignored entirely
+        build_qif_from_csv(
+            input_csv=tmp_csv.name,
+            output_qif=tmp_qif.name,
+            bank_account_name="Assets:Bank:Main",
+            income_account_name="Income:Consulting",
+            expense_account_name="Expenses:Equipment",
+            vat_output_account_name=None,
+            vat_input_account_name=None,
+            filter_category=None
+        )
+
+        with open(tmp_qif.name, "r", encoding="utf-8") as f:
+            qif_lines = [line.rstrip("\n") for line in f if line.strip()]
+
+        # Income transaction at 05/01/2023
+        idx_mix_income = qif_lines.index("D05/01/2023")
+        self.assertEqual(qif_lines[idx_mix_income + 1], "T1000.00")
+        self.assertEqual(qif_lines[idx_mix_income + 2], "PClient X")
+        self.assertEqual(qif_lines[idx_mix_income + 3], "MConsulting")
+        self.assertEqual(qif_lines[idx_mix_income + 4], "NMIX1")
+        # Single split ignoring VAT
+        self.assertEqual(qif_lines[idx_mix_income + 5], "SIncome:Consulting")
+        self.assertEqual(qif_lines[idx_mix_income + 6], "$-1000.00")
+        self.assertEqual(qif_lines[idx_mix_income + 7], "%Net (income, no VAT)")
+        self.assertEqual(qif_lines[idx_mix_income + 8], "^")
+
+        # Expense transaction at 05/02/2023
+        idx_mix_expense = qif_lines.index("D05/02/2023")
+        self.assertEqual(qif_lines[idx_mix_expense + 1], "T-500.00")
+        self.assertEqual(qif_lines[idx_mix_expense + 2], "PSupplier Y")
+        self.assertEqual(qif_lines[idx_mix_expense + 3], "MEquipment")
+        self.assertEqual(qif_lines[idx_mix_expense + 4], "NMIX2")
+        # Single split ignoring VAT
+        self.assertEqual(qif_lines[idx_mix_expense + 5], "SExpenses:Equipment")
+        self.assertEqual(qif_lines[idx_mix_expense + 6], "$500.00")
+        self.assertEqual(qif_lines[idx_mix_expense + 7], "%Net (expense, no VAT)")
+        self.assertEqual(qif_lines[idx_mix_expense + 8], "^")
+
+        os.unlink(tmp_csv.name)
+        os.unlink(tmp_qif.name)
+
     def test_parse_amount_german_positive(self):
         self.assertEqual(parse_amount_german("6.664,00"), Decimal("6664.00"))
         self.assertEqual(parse_amount_german("150,50"), Decimal("150.50"))

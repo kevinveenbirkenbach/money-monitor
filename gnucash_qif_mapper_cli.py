@@ -1,4 +1,4 @@
-# File: gnucash_qif_mapper_cli.py
+# gnucash_qif_mapper_cli.py
 
 #!/usr/bin/env python3
 
@@ -14,7 +14,7 @@ def main():
     parser.add_argument(
         "-i", "--input-csv",
         required=True,
-        help="Path to the flat input CSV. Must contain columns: id,date,brutto value,currency,sender,description,Kategorie,netto value,Vat value"
+        help="Path to the flat input CSV. Must contain columns: id,date,brutto value,currency,sender,receiver,partner_name,description,category,netto value,Vat value"
     )
     parser.add_argument(
         "-o", "--output-qif",
@@ -38,18 +38,20 @@ def main():
     )
     parser.add_argument(
         "--vat-output-account",
-        required=True,
-        help="Name of the VAT Output (liability) account (for brutto > 0). E.g. 'Liabilities:VAT Output 19%'."
+        required=False,
+        default=None,
+        help="(Optional) Name of the VAT Output (liability) account (for brutto > 0). If not provided, VAT will be ignored."
     )
     parser.add_argument(
         "--vat-input-account",
-        required=True,
-        help="Name of the VAT Input (asset) account (for brutto < 0). E.g. 'Assets:VAT Input 19%'."
+        required=False,
+        default=None,
+        help="(Optional) Name of the VAT Input (asset) account (for brutto < 0). If not provided, VAT will be ignored."
     )
     parser.add_argument(
         "--category",
         required=False,
-        help="If set, only process rows where the 'Kategorie' column exactly matches this value."
+        help="If set, only process rows where the 'category' column exactly matches this value."
     )
 
     args = parser.parse_args()
